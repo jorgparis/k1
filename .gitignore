@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Node
+node_modules/
+
+# Generated build artifacts: story audio, previews, timeline tables,
+# bench logs, and the built phone page
+build/
+
+# Locally fetched audio libraries
+.audio-libs/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini

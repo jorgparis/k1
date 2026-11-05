@@ -1,0 +1,166 @@
+{
+  "name": "story_grimm",
+  "description": "Un conte des fr\u00e8res Grimm \u00e0 trois voix : le narrateur, le p\u00eacheur et sa femme, plus le poisson d'or. N\u00e9cessite ses 02/*.mp3 (601+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/601"
+    },
+    {
+      "wait": 3.65
+    },
+    {
+      "speak": "02/602"
+    },
+    {
+      "wait": 8.89
+    },
+    {
+      "speak": "02/603"
+    },
+    {
+      "wait": 5.42
+    },
+    {
+      "action": "Wave Hands",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/604"
+    },
+    {
+      "wait": 4.47
+    },
+    {
+      "wait": 1.53
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/605"
+    },
+    {
+      "wait": 7.77
+    },
+    {
+      "actionPath": "SpeAction/shake head",
+      "grace": 19.5
+    },
+    {
+      "speak": "02/606"
+    },
+    {
+      "wait": 4.25
+    },
+    {
+      "speak": "02/607"
+    },
+    {
+      "wait": 6.65
+    },
+    {
+      "speak": "02/608"
+    },
+    {
+      "wait": 6.48
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/609"
+    },
+    {
+      "wait": 6.19
+    },
+    {
+      "speak": "02/610"
+    },
+    {
+      "wait": 7.23
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/611"
+    },
+    {
+      "wait": 7.41
+    },
+    {
+      "speak": "02/612"
+    },
+    {
+      "wait": 5.92
+    },
+    {
+      "action": "Battle State",
+      "grace": 16.8
+    },
+    {
+      "speak": "02/613"
+    },
+    {
+      "wait": 7.58
+    },
+    {
+      "speak": "02/614"
+    },
+    {
+      "wait": 5.21
+    },
+    {
+      "action": "Mountain Running",
+      "grace": 27.8
+    },
+    {
+      "speak": "02/615"
+    },
+    {
+      "wait": 5.52
+    },
+    {
+      "wait": 0.48
+    },
+    {
+      "action": "Back Flip",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/616"
+    },
+    {
+      "wait": 6.5
+    },
+    {
+      "speak": "02/617"
+    },
+    {
+      "wait": 5.45
+    },
+    {
+      "action": "Play Dead",
+      "grace": 31.8
+    },
+    {
+      "speak": "02/618"
+    },
+    {
+      "wait": 8.08
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/619"
+    },
+    {
+      "wait": 0.78
+    }
+  ]
+}

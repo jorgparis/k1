@@ -1,0 +1,284 @@
+{
+  "name": "story_bremen",
+  "description": "Le conte des fr\u00e8res Grimm \u00e0 plusieurs voix : un \u00e2ne, un chien, un chat, un coq et un voleur. N\u00e9cessite ses 02/*.mp3 (801+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/801"
+    },
+    {
+      "wait": 1.15
+    },
+    {
+      "speak": "02/802"
+    },
+    {
+      "wait": 9.35
+    },
+    {
+      "speak": "02/803"
+    },
+    {
+      "wait": 6.15
+    },
+    {
+      "action": "Wave Hands",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/804"
+    },
+    {
+      "wait": 5.22
+    },
+    {
+      "speak": "02/805"
+    },
+    {
+      "wait": 4.89
+    },
+    {
+      "speak": "02/806"
+    },
+    {
+      "wait": 4.65
+    },
+    {
+      "speak": "02/807"
+    },
+    {
+      "wait": 5.17
+    },
+    {
+      "action": "Do Dog Barks",
+      "grace": 22.0
+    },
+    {
+      "speak": "02/808"
+    },
+    {
+      "wait": 2.65
+    },
+    {
+      "speak": "02/809"
+    },
+    {
+      "wait": 3.66
+    },
+    {
+      "speak": "02/810"
+    },
+    {
+      "wait": 4.38
+    },
+    {
+      "speak": "02/811"
+    },
+    {
+      "wait": 5.05
+    },
+    {
+      "action": "Do Cat Meows",
+      "grace": 21.3
+    },
+    {
+      "speak": "02/812"
+    },
+    {
+      "wait": 3.38
+    },
+    {
+      "speak": "02/813"
+    },
+    {
+      "wait": 3.19
+    },
+    {
+      "speak": "02/814"
+    },
+    {
+      "wait": 2.87
+    },
+    {
+      "speak": "02/815"
+    },
+    {
+      "wait": 3.96
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/816"
+    },
+    {
+      "wait": 5.41
+    },
+    {
+      "speak": "02/817"
+    },
+    {
+      "wait": 6.41
+    },
+    {
+      "action": "Mountain Running",
+      "grace": 27.8
+    },
+    {
+      "speak": "02/818"
+    },
+    {
+      "wait": 6.78
+    },
+    {
+      "speak": "02/819"
+    },
+    {
+      "wait": 3.73
+    },
+    {
+      "speak": "02/820"
+    },
+    {
+      "wait": 5.27
+    },
+    {
+      "speak": "02/821"
+    },
+    {
+      "wait": 3.23
+    },
+    {
+      "speak": "02/822"
+    },
+    {
+      "wait": 8.85
+    },
+    {
+      "action": "Crazy",
+      "grace": 20.1
+    },
+    {
+      "speak": "02/823"
+    },
+    {
+      "wait": 5.16
+    },
+    {
+      "wait": 0.84
+    },
+    {
+      "action": "Battle State",
+      "grace": 16.8
+    },
+    {
+      "speak": "02/824"
+    },
+    {
+      "wait": 6.91
+    },
+    {
+      "speak": "02/825"
+    },
+    {
+      "wait": 5.59
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/826"
+    },
+    {
+      "wait": 6.7
+    },
+    {
+      "speak": "02/827"
+    },
+    {
+      "wait": 6.37
+    },
+    {
+      "speak": "02/828"
+    },
+    {
+      "wait": 4.79
+    },
+    {
+      "speak": "02/829"
+    },
+    {
+      "wait": 4.98
+    },
+    {
+      "speak": "02/830"
+    },
+    {
+      "wait": 0.85
+    },
+    {
+      "speak": "02/831"
+    },
+    {
+      "wait": 3.77
+    },
+    {
+      "speak": "02/832"
+    },
+    {
+      "wait": 0.8
+    },
+    {
+      "speak": "02/833"
+    },
+    {
+      "wait": 3.88
+    },
+    {
+      "speak": "02/834"
+    },
+    {
+      "wait": 1.02
+    },
+    {
+      "action": "Yield",
+      "grace": 20.9
+    },
+    {
+      "speak": "02/835"
+    },
+    {
+      "wait": 7.52
+    },
+    {
+      "speak": "02/836"
+    },
+    {
+      "wait": 7.13
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/837"
+    },
+    {
+      "wait": 4.81
+    },
+    {
+      "wait": 1.19
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/838"
+    },
+    {
+      "wait": 0.78
+    }
+  ]
+}

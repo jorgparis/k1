@@ -1,0 +1,179 @@
+{
+  "name": "story_derelict",
+  "description": "A science-fiction story: the K1 wakes a lone survivor on a dying ship. Needs its 02/*.mp3 (401+) copied to the card first, or the narration is silent while the stunts play.",
+  "steps": [
+    {
+      "speak": "02/401"
+    },
+    {
+      "wait": 1.75
+    },
+    {
+      "speak": "02/402"
+    },
+    {
+      "wait": 6.42
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/403"
+    },
+    {
+      "wait": 4.24
+    },
+    {
+      "wait": 1.76
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/404"
+    },
+    {
+      "wait": 2.79
+    },
+    {
+      "speak": "02/405"
+    },
+    {
+      "wait": 1.59
+    },
+    {
+      "wait": 1.62
+    },
+    {
+      "action": "Battle State",
+      "grace": 16.8
+    },
+    {
+      "speak": "02/406"
+    },
+    {
+      "wait": 5.42
+    },
+    {
+      "wait": 0.58
+    },
+    {
+      "action": "Kung Fu",
+      "grace": 24.9
+    },
+    {
+      "speak": "02/407"
+    },
+    {
+      "wait": 4.92
+    },
+    {
+      "wait": 1.08
+    },
+    {
+      "action": "Do Cat Meows",
+      "grace": 21.3
+    },
+    {
+      "speak": "02/408"
+    },
+    {
+      "wait": 2.61
+    },
+    {
+      "speak": "02/409"
+    },
+    {
+      "wait": 4.6
+    },
+    {
+      "action": "Back Flip",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/410"
+    },
+    {
+      "wait": 2.88
+    },
+    {
+      "wait": 3.12
+    },
+    {
+      "action": "Start Shooting",
+      "grace": 18.4
+    },
+    {
+      "speak": "02/411"
+    },
+    {
+      "wait": 3.0
+    },
+    {
+      "wait": 3.0
+    },
+    {
+      "action": "Open Fire",
+      "grace": 28.9
+    },
+    {
+      "speak": "02/412"
+    },
+    {
+      "wait": 3.57
+    },
+    {
+      "speak": "02/413"
+    },
+    {
+      "wait": 5.79
+    },
+    {
+      "action": "Play Dead",
+      "grace": 31.8
+    },
+    {
+      "speak": "02/414"
+    },
+    {
+      "wait": 3.79
+    },
+    {
+      "speak": "02/415"
+    },
+    {
+      "wait": 1.15
+    },
+    {
+      "wait": 1.06
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/416"
+    },
+    {
+      "wait": 5.93
+    },
+    {
+      "speak": "02/417"
+    },
+    {
+      "wait": 3.85
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/418"
+    },
+    {
+      "wait": 1.42
+    }
+  ]
+}

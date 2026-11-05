@@ -1,0 +1,254 @@
+{
+  "name": "story_chat_botte",
+  "description": "Le conte de Perrault \u00e0 trois voix : le narrateur, le fils du meunier et le chat, plus l'ogre. N\u00e9cessite ses 02/*.mp3 (701+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/701"
+    },
+    {
+      "wait": 1.15
+    },
+    {
+      "speak": "02/702"
+    },
+    {
+      "wait": 5.04
+    },
+    {
+      "speak": "02/703"
+    },
+    {
+      "wait": 6.08
+    },
+    {
+      "speak": "02/704"
+    },
+    {
+      "wait": 5.09
+    },
+    {
+      "speak": "02/705"
+    },
+    {
+      "wait": 5.86
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/706"
+    },
+    {
+      "wait": 1.41
+    },
+    {
+      "speak": "02/707"
+    },
+    {
+      "wait": 5.69
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/708"
+    },
+    {
+      "wait": 7.29
+    },
+    {
+      "action": "Do Cat Meows",
+      "grace": 21.3
+    },
+    {
+      "speak": "02/709"
+    },
+    {
+      "wait": 5.22
+    },
+    {
+      "speak": "02/710"
+    },
+    {
+      "wait": 6.59
+    },
+    {
+      "action": "Propose",
+      "grace": 33.3
+    },
+    {
+      "speak": "02/711"
+    },
+    {
+      "wait": 3.77
+    },
+    {
+      "speak": "02/712"
+    },
+    {
+      "wait": 5.12
+    },
+    {
+      "speak": "02/713"
+    },
+    {
+      "wait": 3.59
+    },
+    {
+      "speak": "02/714"
+    },
+    {
+      "wait": 3.65
+    },
+    {
+      "speak": "02/715"
+    },
+    {
+      "wait": 4.64
+    },
+    {
+      "action": "Wave Hands",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/716"
+    },
+    {
+      "wait": 6.16
+    },
+    {
+      "speak": "02/717"
+    },
+    {
+      "wait": 4.93
+    },
+    {
+      "speak": "02/718"
+    },
+    {
+      "wait": 6.66
+    },
+    {
+      "speak": "02/719"
+    },
+    {
+      "wait": 4.51
+    },
+    {
+      "action": "Appreciation",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/720"
+    },
+    {
+      "wait": 6.69
+    },
+    {
+      "speak": "02/721"
+    },
+    {
+      "wait": 5.52
+    },
+    {
+      "action": "Yield",
+      "grace": 20.9
+    },
+    {
+      "speak": "02/722"
+    },
+    {
+      "wait": 6.25
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/723"
+    },
+    {
+      "wait": 7.0
+    },
+    {
+      "speak": "02/724"
+    },
+    {
+      "wait": 10.86
+    },
+    {
+      "speak": "02/725"
+    },
+    {
+      "wait": 0.8
+    },
+    {
+      "action": "Battle State",
+      "grace": 16.8
+    },
+    {
+      "speak": "02/726"
+    },
+    {
+      "wait": 5.39
+    },
+    {
+      "speak": "02/727"
+    },
+    {
+      "wait": 7.01
+    },
+    {
+      "speak": "02/728"
+    },
+    {
+      "wait": 0.85
+    },
+    {
+      "speak": "02/729"
+    },
+    {
+      "wait": 3.3
+    },
+    {
+      "speak": "02/730"
+    },
+    {
+      "wait": 4.07
+    },
+    {
+      "speak": "02/731"
+    },
+    {
+      "wait": 6.42
+    },
+    {
+      "speak": "02/732"
+    },
+    {
+      "wait": 3.71
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/733"
+    },
+    {
+      "wait": 9.48
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/734"
+    },
+    {
+      "wait": 0.78
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0f16">
+<title>K1 Story Player</title>
+<style>
+  :root {
+    --bg: #0b0f16;
+    --panel: #131a26;
+    --panel2: #0f1520;
+    --line: #223047;
+    --text: #e8eef8;
+    --dim: #93a4bd;
+    --accent: #5cc8ff;
+    --ok: #56d18b;
+    --warn: #f0b45a;
+    --bad: #ff7a7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 14px 14px 0; }
+
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px calc(12px + env(safe-area-inset-top)) 14px;
+    background: rgba(11, 15, 22, .92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .brand h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #4a566b; flex: 0 0 auto; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px rgba(86, 209, 139, .7); }
+  .dot.wait { background: var(--warn); }
+  .dot.bad { background: var(--bad); }
+  #statusText { font-size: 12.5px; color: var(--dim); text-align: right; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 0 0 12px;
+  }
+  .card h2 { margin: 0; font-size: 17px; font-weight: 650; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .row + .row { margin-top: 10px; }
+
+  button {
+    font: inherit; font-weight: 600; color: var(--text);
+    background: #1b2636; border: 1px solid #2b3b53;
+    border-radius: 11px; padding: 12px 18px; cursor: pointer;
+    min-height: 46px; touch-action: manipulation;
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .42; cursor: default; transform: none; }
+  button.primary { background: #143a52; border-color: #1f5d80; color: #d9f3ff; }
+  button.danger { background: #481d22; border-color: #7d2f39; color: #ffdada; }
+  button.ghost { background: transparent; }
+  button.small { min-height: 36px; padding: 7px 12px; font-size: 13.5px; font-weight: 500; }
+
+  label.check {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 11px; color: var(--dim); font-size: 14px;
+  }
+  label.check.muted { opacity: .55; }
+  input[type=checkbox] {
+    appearance: none; width: 22px; height: 22px; flex: 0 0 auto;
+    border: 1px solid #38506e; border-radius: 6px; background: #0d1420;
+    display: grid; place-content: center; margin: 0;
+  }
+  input[type=checkbox]:checked { background: #1d5b7d; border-color: #2f86b5; }
+  input[type=checkbox]:checked::after {
+    content: ""; width: 11px; height: 6px;
+    border-left: 2.5px solid #d9f3ff; border-bottom: 2.5px solid #d9f3ff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .hint { margin: 11px 0 0; color: var(--dim); font-size: 13.5px; }
+
+  .story { position: relative; }
+  .storyHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .meta { margin: 5px 0 0; color: var(--accent); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .blurb { margin: 8px 0 12px; color: var(--dim); font-size: 14px; }
+  .clipnote { color: var(--dim); font-size: 12px; margin-left: auto; }
+  .chip {
+    display: inline-block; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel2);
+    font-size: 11.5px; color: var(--dim); letter-spacing: .4px; text-transform: uppercase;
+  }
+  .chip.live { color: var(--accent); border-color: #275a79; }
+  .chip.ok { color: var(--ok); border-color: #2b6047; }
+  .chip.warn { color: var(--warn); border-color: #6c5327; }
+  .chip.bad { color: var(--bad); border-color: #6e3030; }
+
+  .stage { border-color: #27506b; background: linear-gradient(180deg, #14202e, var(--panel)); }
+  .stageHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .stageHead span:first-child { font-weight: 650; font-size: 15px; }
+  .caption {
+    margin: 6px 0 4px; font-size: 20px; line-height: 1.3; font-weight: 570;
+    min-height: 2.6em; overflow-wrap: anywhere;
+  }
+  .caption.pause { color: #c3d2e6; }
+  .caption.speech { color: #f3f8ff; }
+  .caption.action { color: #9fe0ff; }
+  .caption.done { color: var(--ok); }
+  #captionSub { margin: 0 0 12px; color: var(--dim); font-size: 12.5px; min-height: 1.4em; }
+  .bar { height: 9px; border-radius: 999px; background: #0a1018; border: 1px solid #1d2a3c; overflow: hidden; }
+  #barFill { height: 100%; width: 0; background: linear-gradient(90deg, #2a7fae, #5cc8ff); transition: width .2s linear; }
+  .times { display: flex; justify-content: space-between; margin: 5px 1px 12px; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  .envwarn {
+    border-color: #7d2f39; background: #2a1418; color: #ffdada;
+    font-size: 14px;
+  }
+  .envwarn b { color: #fff; }
+
+  ul.safety { margin: 8px 0 0; padding-left: 20px; color: var(--dim); font-size: 13.5px; }
+  ul.safety li { margin: 5px 0; }
+  ul.safety b { color: var(--text); font-weight: 600; }
+
+  details.diag summary { cursor: pointer; color: var(--dim); font-size: 14px; }
+  .diagrow { display: flex; gap: 10px; margin-top: 8px; font-size: 12px; }
+  .diagrow .k { color: var(--dim); flex: 0 0 118px; }
+  .diagrow .v { color: var(--text); overflow-wrap: anywhere; }
+  #log {
+    margin: 12px 0 0; padding: 10px; height: 220px; overflow: auto;
+    background: #080d14; border: 1px solid #1a2637; border-radius: 10px;
+    font: 11.5px/1.42 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  #log .entry { color: #b7c6da; }
+  #log .t { color: #51627a; }
+  #log .tx { color: #7fd6a8; }
+  #log .rx { color: #8fb6d8; }
+  #log .ok { color: var(--ok); }
+  #log .warn { color: var(--warn); }
+  #log .bad { color: var(--bad); }
+  #log .line { color: #e8eef8; }
+  #log .stunt { color: var(--accent); }
+  #log .progress { color: #6f8099; }
+  #log .info { color: var(--dim); }
+  .diagbtns { display: flex; gap: 8px; margin-top: 10px; }
+
+  @media (min-width: 560px) {
+    .caption { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot" id="statusDot"></span><h1>K1 Story Player</h1></div>
+  <div id="statusText">Disconnected</div>
+</header>
+
+<div class="wrap">
+  <div class="card envwarn" id="envWarn" hidden>
+    <b>Web Bluetooth is unavailable here.</b> Chrome refuses it outside a secure
+    context. Open this page from <code>http://localhost</code> instead — on the
+    phone itself, in Termux: <code>python -m http.server 8000</code>, then
+    <code>http://localhost:8000/k1-story.html</code>. The Bluetooth API only
+    exists in Chrome on Android (or desktop Chrome).
+  </div>
+
+  <section class="card" id="connectCard">
+    <div class="row">
+      <button id="btnConnect" class="primary">Connect robot</button>
+      <button id="btnDisconnect" class="ghost" disabled>Disconnect</button>
+    </div>
+    <label class="check"><input type="checkbox" id="chkAll"> Show every Bluetooth device</label>
+    <label class="check"><input type="checkbox" id="chkRehearse"> Rehearse without the robot</label>
+    <label class="check"><input type="checkbox" id="chkWithResponse"> Force write-with-response (only if long writes fail)</label>
+    <p class="hint" id="connectHint">Close the K One app first — the robot accepts one Bluetooth connection. Tap Connect, pick K1-…, then keep this tab in front.</p>
+  </section>
+
+  <section class="card stage" id="stage" hidden>
+    <div class="stageHead">
+      <span id="stageTitle">—</span>
+      <span class="chip" id="stageState">ready</span>
+    </div>
+    <p class="caption" id="caption">…</p>
+    <p id="captionSub"></p>
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="times"><span id="timeNow">0:00</span><span id="timeTotal">0:00</span></div>
+    <div class="row">
+      <button id="btnStop" class="danger" disabled>Stop</button>
+      <button id="btnReady" class="ghost" hidden>Robot is ready</button>
+    </div>
+  </section>
+
+  <section id="stories"></section>
+
+  <section class="card">
+    <h2>Before you press Play</h2>
+    <ul class="safety">
+      <li><b>Pillows in front and behind.</b> The K1 cannot catch itself.</li>
+      <li><b>Close the K One app.</b> Only one Bluetooth central can hold the robot.</li>
+      <li><b>Keep this tab in front.</b> A background tab has its timers throttled and can fall out of sync with the narration.</li>
+      <li><b>Stop sends the stop frame, not a rescue.</b> Watch the robot; do not start another story until it is standing and still.</li>
+      <li>The narration is read from the SD card. If the clips are missing, the stunts still play and the story is silent.</li>
+    </ul>
+  </section>
+
+  <details class="card" id="diagCard">
+    <summary>Diagnostics</summary>
+    <div id="diag"></div>
+    <div class="diagbtns">
+      <button id="btnCopyLog" class="ghost small">Copy log</button>
+      <button id="btnClearLog" class="ghost small">Clear</button>
+    </div>
+    <div id="log"></div>
+  </details>
+</div>
+
+<script>
+/*__FRAMES__*/
+</script>
+<script>
+/*__DATA__*/
+</script>
+<script>
+/*__PLAYER__*/
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "showcase",
+  "description": "Every choreography primitive in one run: custom audio by path, eased joints, factory stunts, a card-only stunt robot.json never names, locomotion, and timed pauses. Dry-run it with: python k1ctl.py --sim routine routines/showcase.json",
+  "steps": [
+    { "speak": "02/101" },
+    { "wait": 1.2 },
+
+    { "glide": { "head": 145 }, "maxStep": 3 },
+    { "wait": 0.4 },
+    { "glide": { "head": 100 }, "maxStep": 3 },
+
+    { "action": "Say Hello" },
+    { "action": "Left Punch" },
+    { "action": "Right Punch" },
+
+    { "actionPath": "SpeAction/showtime" },
+
+    { "move": "left", "ms": 800 },
+    { "action": "Celebrate" }
+  ]
+}

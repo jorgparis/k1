@@ -1,0 +1,173 @@
+{
+  "name": "story_derelict_fr",
+  "description": "Derelict en fran\u00e7ais, lu par la voix fr-FR install\u00e9e. N\u00e9cessite ses 02/*.mp3 (501+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/501"
+    },
+    {
+      "wait": 1.75
+    },
+    {
+      "speak": "02/502"
+    },
+    {
+      "wait": 7.76
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/503"
+    },
+    {
+      "wait": 4.52
+    },
+    {
+      "wait": 1.48
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/504"
+    },
+    {
+      "wait": 3.77
+    },
+    {
+      "speak": "02/505"
+    },
+    {
+      "wait": 1.84
+    },
+    {
+      "wait": 0.38
+    },
+    {
+      "action": "Battle State",
+      "grace": 16.8
+    },
+    {
+      "speak": "02/506"
+    },
+    {
+      "wait": 7.14
+    },
+    {
+      "action": "Kung Fu",
+      "grace": 24.9
+    },
+    {
+      "speak": "02/507"
+    },
+    {
+      "wait": 7.36
+    },
+    {
+      "action": "Do Cat Meows",
+      "grace": 21.3
+    },
+    {
+      "speak": "02/508"
+    },
+    {
+      "wait": 3.21
+    },
+    {
+      "speak": "02/509"
+    },
+    {
+      "wait": 5.9
+    },
+    {
+      "action": "Back Flip",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/510"
+    },
+    {
+      "wait": 3.64
+    },
+    {
+      "wait": 2.36
+    },
+    {
+      "action": "Start Shooting",
+      "grace": 18.4
+    },
+    {
+      "speak": "02/511"
+    },
+    {
+      "wait": 3.48
+    },
+    {
+      "wait": 2.52
+    },
+    {
+      "action": "Open Fire",
+      "grace": 28.9
+    },
+    {
+      "speak": "02/512"
+    },
+    {
+      "wait": 4.18
+    },
+    {
+      "speak": "02/513"
+    },
+    {
+      "wait": 6.62
+    },
+    {
+      "action": "Play Dead",
+      "grace": 31.8
+    },
+    {
+      "speak": "02/514"
+    },
+    {
+      "wait": 4.47
+    },
+    {
+      "speak": "02/515"
+    },
+    {
+      "wait": 1.15
+    },
+    {
+      "wait": 0.38
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/516"
+    },
+    {
+      "wait": 7.18
+    },
+    {
+      "speak": "02/517"
+    },
+    {
+      "wait": 5.12
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/518"
+    },
+    {
+      "wait": 1.71
+    }
+  ]
+}

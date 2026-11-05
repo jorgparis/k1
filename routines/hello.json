@@ -1,0 +1,13 @@
+[
+  { "say": 101 },
+  { "pose": { "head": 160 }, "speed": 30 },
+  { "wait": 0.4 },
+  { "pose": { "head": 90 }, "speed": 30 },
+  { "action": "Wave Hands" },
+  { "action": "Left Punch" },
+  { "action": "Right Punch" },
+  { "move": "forward", "ms": 700 },
+  { "move": "turn left", "ms": 600 },
+  { "move": "backward", "ms": 700 },
+  { "action": "Celebrate" }
+]

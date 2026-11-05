@@ -1,0 +1,156 @@
+{
+  "name": "story_first_boot",
+  "description": "A custom story: generated narration plus factory stunts. Needs build/story/02/*.mp3 copied to the card first, or the narration is silent while the stunts still play.",
+  "steps": [
+    {
+      "speak": "02/301"
+    },
+    {
+      "wait": 1.41
+    },
+    {
+      "speak": "02/302"
+    },
+    {
+      "wait": 3.4
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/303"
+    },
+    {
+      "wait": 2.97
+    },
+    {
+      "wait": 3.03
+    },
+    {
+      "action": "Crazy",
+      "grace": 20.1
+    },
+    {
+      "speak": "02/304"
+    },
+    {
+      "wait": 1.55
+    },
+    {
+      "wait": 4.45
+    },
+    {
+      "action": "Kung Fu",
+      "grace": 24.9
+    },
+    {
+      "speak": "02/305"
+    },
+    {
+      "wait": 1.7
+    },
+    {
+      "wait": 4.3
+    },
+    {
+      "action": "Do Cat Meows",
+      "grace": 21.3
+    },
+    {
+      "speak": "02/306"
+    },
+    {
+      "wait": 2.62
+    },
+    {
+      "speak": "02/307"
+    },
+    {
+      "wait": 1.84
+    },
+    {
+      "wait": 1.54
+    },
+    {
+      "action": "Lay Down",
+      "grace": 30.2
+    },
+    {
+      "speak": "02/308"
+    },
+    {
+      "wait": 1.18
+    },
+    {
+      "speak": "02/309"
+    },
+    {
+      "wait": 1.68
+    },
+    {
+      "wait": 3.14
+    },
+    {
+      "action": "Play Dead",
+      "grace": 31.8
+    },
+    {
+      "speak": "02/310"
+    },
+    {
+      "wait": 4.01
+    },
+    {
+      "speak": "02/311"
+    },
+    {
+      "wait": 1.73
+    },
+    {
+      "wait": 0.26
+    },
+    {
+      "action": "Open Fire",
+      "grace": 28.9
+    },
+    {
+      "speak": "02/312"
+    },
+    {
+      "wait": 2.19
+    },
+    {
+      "speak": "02/313"
+    },
+    {
+      "wait": 1.15
+    },
+    {
+      "wait": 2.66
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "speak": "02/314"
+    },
+    {
+      "wait": 1.47
+    },
+    {
+      "wait": 4.53
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/315"
+    },
+    {
+      "wait": 1.12
+    }
+  ]
+}
