@@ -1020,19 +1020,21 @@ The record layout is decoded; the timing model is still an approximation.
   | bytes | meaning |
   | --- | --- |
   | 0–2 | signed-magnitude values for torso joints the K1 does not expose (a larger Robosen model has them); they mirror with the body |
-  | 3 | flags. **Bit 7 is the whole-record mirror/side bit**; the low bits carry a small sub-field |
+  | 3 | flags. **Bit 7 is the side bit for centred joints, chiefly the head**; the low bits carry a small sub-field |
   | 4–20 | the 17 servos, in `robot.json` index order — **`head` is byte 20** |
   | 21–27 | filler (the spec's fixed slots) |
   | 28 | per-frame speed, 1–100 |
   | 29 | relative emphasis, and the marker for a block a routine repeats |
   | 30–31 | tag: `0b xx` on the first record (`xx` = action id and audio key), `fc fc` normal, `fb fb` last |
 
-- **Direction is one mirror bit, not a per-joint sign.** Servo slots hold travel
-  from neutral, so `20` means "20 counts", never "left 20" or "right 20". Byte
-  3's top bit flips the whole pose left/right: the factory's `Tilt Left` vs
-  `Tilt Right`, `Raise Left Hand` vs `Raise Right Hand`, and `lift your left
-  arm` vs `lift your right arm` all differ there. One bit is enough to turn the
-  head either way — verified on hardware with the two moves below.
+- **Servo slots hold distance, never a side.** `20` means "20 counts", never
+  "left 20". Whole-body left/right stunts store their mirror in the joint slots
+  themselves: `Left Punch`/`Right Punch` swap the shoulder, arm and hand values,
+  `left kick`/`right kick` swap the legs. A centred joint such as the head has no
+  second slot to swap, so its side is byte 3's top bit. In `shake head` records
+  1 and 2 the head slot is identical and only that bit (plus the phantom torso
+  signs) changes — enough to reverse the head, verified on hardware with the two
+  moves below.
 
 - **The first record's `0b xx` id selects the audio.** `0x3d` is `shake head`,
   which owns `11/061.mp3`. Changing only that id to one with no clip (`0x53`)
@@ -1058,7 +1060,7 @@ Both are edits of `SpeAction/shake head`; no joint value is invented.
 | `SpeAction/look right.sh` | shake 0 + 2 | `00` | 0 → 20 | `0b 53` |
 
 Records 1 and 2 of `shake head` both target `head = 20`; they differ in the
-mirror bit, which is exactly why the original is a shake. Keeping one of them
+head-side bit, which is exactly why the original is a shake. Keeping one of them
 makes a one-way look, and the silent id removes the "shake head" voice. Play them
 with `routines/look.json`:
 
