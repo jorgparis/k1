@@ -918,7 +918,8 @@ python k1ctl.py card D:\
 
 | | |
 | --- | --- |
-| stunt scripts on the card | **130** (9 `Action`, 55 `ProAction`, 66 `SpeAction`) |
+| factory stunt scripts | **130** (9 `Action`, 55 `ProAction`, 66 `SpeAction`) |
+| added on this card | `ProAction/ZZTestPunch` (the copy probe) and `SpeAction/look left` / `look right` (below) |
 | actions in `robot.json` | **68** |
 | playable but unknown to the spec | **13**, all in `SpeAction` |
 | stunts present in both `ProAction` and `SpeAction` | 53 |
