@@ -1,0 +1,9 @@
+{
+  "name": "wave-left-right",
+  "description": "Two one-hand waves derived from SpeAction/Wave Hands. The source holds both shoulders at 170 and alternates the arm joint 10<->20; each file keeps one arm's full trajectory and sets the other arm chain to the neutral values the same file already uses at its start and end. Wave left changes the right shoulder 170->0 and right arm 20->10; wave right mirrors that onto the other side. The first-record id stays 0x2f, so the Wave Hands sound plays. Copy build/wave/final/wave left.sh and wave right.sh to D:\\SpeAction first.",
+  "steps": [
+    { "actionPath": "SpeAction/wave left", "grace": 20 },
+    { "wait": 6 },
+    { "actionPath": "SpeAction/wave right", "grace": 20 }
+  ]
+}

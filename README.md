@@ -184,7 +184,9 @@ python k1ctl.py --sim record routines/showcase.json frames.json   # every frame
 words have to be copied to `02/<number>.mp3` over USB-C first. `actionPath`
 reaches the 13 card-only stunts `robot.json` never names, and any `.sh` you add
 yourself: `routines/look.json` plays `SpeAction/look left` and
-`SpeAction/look right`, two silent moves derived from `shake head` (below).
+`SpeAction/look right` (two silent moves derived from `shake head`), and
+`routines/wave.json` plays `SpeAction/wave left` and `SpeAction/wave right`
+(two one-hand waves derived from `Wave Hands`) — both below.
 `glide` eases to a pose
 in steps of at most `maxStep` counts instead of one 17-joint jump, and `fast`
 drops the inter-frame delay for dry runs.
@@ -919,7 +921,7 @@ python k1ctl.py card D:\
 | | |
 | --- | --- |
 | factory stunt scripts | **130** (9 `Action`, 55 `ProAction`, 66 `SpeAction`) |
-| added on this card | `ProAction/ZZTestPunch` (the copy probe) and `SpeAction/look left` / `look right` (below) |
+| added on this card | `ProAction/ZZTestPunch` (the copy probe) and `SpeAction/look left` / `look right` / `wave left` / `wave right` (below) |
 | actions in `robot.json` | **68** |
 | playable but unknown to the spec | **13**, all in `SpeAction` |
 | stunts present in both `ProAction` and `SpeAction` | 53 |
@@ -1050,9 +1052,9 @@ The record layout is decoded; the timing model is still an approximation.
   Checked against all 130: 10 fall-risk files end `fb` but 28 end `fc`, including
   every long dance. It is a coin flip, not a classifier.
 
-### Two new moves: silent look left / look right
+### Four new moves: silent looks and one-hand waves
 
-Both are edits of `SpeAction/shake head`; no joint value is invented.
+The two looks are edits of `SpeAction/shake head`; no joint value is invented.
 
 | file | source records | byte 3 | head | audio id |
 | --- | --- | --- | --- | --- |
@@ -1074,6 +1076,32 @@ and held, both silent. The firmware serves newly added `SpeAction/*.sh` files by
 path (proven first with a byte-identical copy of `shake head`). The card is only
 writable over USB-C, and actions do not complete while tethered — copy, unplug,
 then play.
+
+### One-hand waves: wave left / wave right
+
+Both are edits of `SpeAction/Wave Hands`; no joint value is invented. The source
+holds **both shoulders at 170** (arms overhead) and alternates the `arm` joint
+`10 ↔ 20` on opposite sides — that small out/in swing is the wave.
+
+| file | source records | changed | motion | audio id |
+| --- | --- | --- | --- | --- |
+| `SpeAction/wave left.sh` | Wave Hands 0–4 | right shoulder `170 → 0`, right arm `20 → 10` | left shoulder 170, left arm 10 → 20 → 10 | `0b 2f` |
+| `SpeAction/wave right.sh` | Wave Hands 0–4 | byte 3 `00 → 80`, left shoulder `170 → 0`, left arm `20 → 10` | right shoulder 170, right arm 20 → 10 → 20 | `0b 2f` |
+
+The non-waving arm is set to the neutral values the source already uses in its
+own start and end records (shoulder 0, arm 10, hand 0), so one hand waves while
+the other stays down. The first-record id stays `0x2f`, so the Wave Hands clip
+plays; no silence needed. Play them with `routines/wave.json`:
+
+```json
+{ "actionPath": "SpeAction/wave left",  "grace": 20 },
+{ "wait": 6 },
+{ "actionPath": "SpeAction/wave right", "grace": 20 }
+```
+
+Both were watched on hardware: the correct arm went overhead and waved, the
+other stayed down, the sound played, and each ended standing. The 6 s settle
+between them is required.
 
 The stunt choreography is still only partly mapped, so fall-risk stays a
 name-based judgement — which is why `--allow-fall-risk` exists and why the block
