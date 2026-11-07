@@ -8,6 +8,9 @@ Built on the protocol reverse-engineered by
 stunt list and command codes are read **live from that package's `robot.json`**,
 so they cannot drift out of sync.
 
+Source: **https://github.com/jorgparis/k1** (MIT). The public copy is sanitised
+(robot serial, MAC and personal paths removed); `build/` stays out of git.
+
 ## Architecture
 
 The shape borrowed from [Microduck](https://github.com/pollen-robotics/microduck):
@@ -179,7 +182,10 @@ python k1ctl.py --sim record routines/showcase.json frames.json   # every frame
 
 `speak` is how custom audio joins a routine — it takes an on-device path, so the
 words have to be copied to `02/<number>.mp3` over USB-C first. `actionPath`
-reaches the 13 card-only stunts `robot.json` never names. `glide` eases to a pose
+reaches the 13 card-only stunts `robot.json` never names, and any `.sh` you add
+yourself: `routines/look.json` plays `SpeAction/look left` and
+`SpeAction/look right`, two silent moves derived from `shake head` (below).
+`glide` eases to a pose
 in steps of at most `maxStep` counts instead of one 17-joint jump, and `fast`
 drops the inter-frame delay for dry runs.
 
@@ -1005,26 +1011,70 @@ Two related fixes came out of the same work:
 
 ### What the `.sh` format looks like
 
-Partly decoded, partly not. Stating both halves honestly:
+The record layout is decoded; the timing model is still an approximation.
 
-- **Records are exactly 32 bytes.** All 130 files are exact multiples of 32.
-- **Every file ends with a two-byte trailer**, `fc fc` (112 files) or `fb fb`
-  (18).
+- **Records are exactly 32 bytes.** All 130 factory files are exact multiples of
+  32.
+
+  | bytes | meaning |
+  | --- | --- |
+  | 0–2 | signed-magnitude values for torso joints the K1 does not expose (a larger Robosen model has them); they mirror with the body |
+  | 3 | flags. **Bit 7 is the whole-record mirror/side bit**; the low bits carry a small sub-field |
+  | 4–20 | the 17 servos, in `robot.json` index order — **`head` is byte 20** |
+  | 21–27 | filler (the spec's fixed slots) |
+  | 28 | per-frame speed, 1–100 |
+  | 29 | relative emphasis, and the marker for a block a routine repeats |
+  | 30–31 | tag: `0b xx` on the first record (`xx` = action id and audio key), `fc fc` normal, `fb fb` last |
+
+- **Direction is one mirror bit, not a per-joint sign.** Servo slots hold travel
+  from neutral, so `20` means "20 counts", never "left 20" or "right 20". Byte
+  3's top bit flips the whole pose left/right: the factory's `Tilt Left` vs
+  `Tilt Right`, `Raise Left Hand` vs `Raise Right Hand`, and `lift your left
+  arm` vs `lift your right arm` all differ there. One bit is enough to turn the
+  head either way — verified on hardware with the two moves below.
+
+- **The first record's `0b xx` id selects the audio.** `0x3d` is `shake head`,
+  which owns `11/061.mp3`. Changing only that id to one with no clip (`0x53`)
+  keeps the trajectory and drops the voice — verified on hardware. The id is
+  not a motion or safety selector.
+
 - **Duration is not implied by record count.** `Do Squats` is 3 records for
-  18000 ms; `Mechanical Beats` is 114 for 62000 ms. So timing lives inside the
-  records, and the per-record field is not yet located.
+  18000 ms; `Mechanical Beats` is 114 for 62000 ms. Timing lives inside the
+  records and `shdecode.py` approximates it from speed and emphasis.
+
 - **The `fb`/`fc` trailer is *not* a fall-risk flag.** It first looked like one —
   the `fb fb` files are things like `Crouch Down`, `Lay Down` and `back flip`.
   Checked against all 130: 10 fall-risk files end `fb` but 28 end `fc`, including
   every long dance. It is a coin flip, not a classifier.
-- **The byte-to-joint mapping is not solved.** Mirror pairs are the promising
-  lead — `Raise Left Hand` vs `Raise Right Hand` differ at only 4–5 offsets, and
-  offsets 10/11 *swap* between them, which is what two mirrored arm joints should
-  look like. Turning that into a full joint map is the next piece of work.
 
-The stunt choreography is therefore still opaque. Until the joint map is solved,
-fall-risk stays a name-based judgement — which is why `--allow-fall-risk` exists
-and why the block is on by default.
+### Two new moves: silent look left / look right
+
+Both are edits of `SpeAction/shake head`; no joint value is invented.
+
+| file | source records | byte 3 | head | audio id |
+| --- | --- | --- | --- | --- |
+| `SpeAction/look left.sh` | shake 0 + 1 | `80` | 0 → 20 | `0b 53` |
+| `SpeAction/look right.sh` | shake 0 + 2 | `00` | 0 → 20 | `0b 53` |
+
+Records 1 and 2 of `shake head` both target `head = 20`; they differ in the
+mirror bit, which is exactly why the original is a shake. Keeping one of them
+makes a one-way look, and the silent id removes the "shake head" voice. Play them
+with `routines/look.json`:
+
+```json
+{ "actionPath": "SpeAction/look left",  "grace": 8 },
+{ "actionPath": "SpeAction/look right", "grace": 8 }
+```
+
+Both were watched on hardware: left turned and held, right turned the other way
+and held, both silent. The firmware serves newly added `SpeAction/*.sh` files by
+path (proven first with a byte-identical copy of `shake head`). The card is only
+writable over USB-C, and actions do not complete while tethered — copy, unplug,
+then play.
+
+The stunt choreography is still only partly mapped, so fall-risk stays a
+name-based judgement — which is why `--allow-fall-risk` exists and why the block
+is on by default.
 
 ## Limits worth knowing
 

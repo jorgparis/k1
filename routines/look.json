@@ -1,0 +1,8 @@
+{
+  "name": "look-left-right",
+  "description": "Two silent one-way head holds derived from SpeAction/shake head: records 0+1 give look left, records 0+2 give look right (the byte 3 mirror bit is the only difference). The first-record audio id is 0x53, which has no clip, so neither move speaks. Both were watched on hardware: each turned and held, in opposite directions, silently. Copy build/look/look left.sh and look right.sh to D:\\SpeAction first; the firmware serves new paths by name.",
+  "steps": [
+    { "actionPath": "SpeAction/look left", "grace": 8 },
+    { "actionPath": "SpeAction/look right", "grace": 8 }
+  ]
+}
