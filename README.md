@@ -988,7 +988,9 @@ need an override, because it is a factory action.
 is a complete sit-and-stand; splitting it after record 4 gives `sit` (ends
 seated) and `stand` (starts from that seated frame, ends standing). Both were
 verified on hardware. That only recovers from the seated pose — it is not a
-floor recovery; `Push Ups` remains that.
+floor recovery; `Push Ups` remains that. The seated frame is **transient**, not
+a rest pose: held for long it tips backward, and posture management is what
+rescues it (see the seated section below).
 
 Caveats, honestly: the *recovery* is **one observation**, from lying horizontally.
 A robot face-down may press into the floor instead of pushing off it, and nothing
@@ -1110,7 +1112,7 @@ Both were watched on hardware: the correct arm went overhead and waved, the
 other stayed down, the sound played, and each ended standing. The 6 s settle
 between them is required.
 
-### Seated: sit, stand, and seated looks
+### Seated: sit, stand, and seated looks — a short beat, not a rest pose
 
 `Take A Seat` is a complete sit-and-stand. Record 4 is the seated dwell
 (thighs ≈104, calves ≈25, shoulders 20, arms down), and records 5–10 get back
@@ -1136,15 +1138,28 @@ longer matches a 4 s sit or an 8 s stand. Play them together with
 { "actionPath": "SpeAction/stand",          "grace": 30 }
 ```
 
-Verified on hardware: `sit` alone held the seated pose and was stable, and the
-four-step sequence sat, looked both ways **without standing**, and stood up at
-the end. Two rules matter:
+Verified on hardware: the four-step sequence sat, looked both ways **without
+standing**, and stood up at the end — the whole run is about 10 s. That short
+window is the entire safe envelope. Record 4 is a frame the factory motion
+passes through, not a pose that holds itself up:
 
-- **Keep the steps close together.** `autoStand` is posture management: after an
-  idle gap it stands the robot back up. The seated sequence must not have a long
-  `speak` beat between its moves.
+- **It is not a rest pose.** Held at record 4, the robot drifts backward. With
+  `autoStand` on (the default) posture management rights it; with `autoStand`
+  written off, a 90 s hold ended with the robot **lying supine on the floor**.
+- **There is no resting-time parameter.** `autoStand` (`0x11`) is a boolean;
+  the state record is `battery, volume, progress, autoStand, autoTurn, autoPose,
+  autoOff` with no timeout field. Joint positions cannot be read back either
+  (`jointSync` is never answered).
+- **Never disable `autoStand` for seated work.** It is the only thing that
+  rescues the pose. Note `--no-auto-stand` on the CLI only skips the enable
+  frame; it does not send an off frame.
+- **Keep the steps close together**, and do not put a long `speak` beat between
+  them. The seated beat has to fit between `sit` and `stand`; a seated
+  narration is not viable.
 - `stand` and both seated looks start from the seated frame. Played while the
   robot is standing, they make it sit first.
+- If the sequence is interrupted while seated, the robot is left in a collapsing
+  pose. Keep the floor clear and be ready to catch or lift it.
 
 The stunt choreography is still only partly mapped, so fall-risk stays a
 name-based judgement — which is why `--allow-fall-risk` exists and why the block
