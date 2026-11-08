@@ -184,9 +184,10 @@ python k1ctl.py --sim record routines/showcase.json frames.json   # every frame
 words have to be copied to `02/<number>.mp3` over USB-C first. `actionPath`
 reaches the 13 card-only stunts `robot.json` never names, and any `.sh` you add
 yourself: `routines/look.json` plays `SpeAction/look left` and
-`SpeAction/look right` (two silent moves derived from `shake head`), and
+`SpeAction/look right` (two silent moves derived from `shake head`),
 `routines/wave.json` plays `SpeAction/wave left` and `SpeAction/wave right`
-(two one-hand waves derived from `Wave Hands`) — both below.
+(two one-hand waves derived from `Wave Hands`), and `routines/sit.json` uses
+the split `sit` / `stand` actions plus two seated looks (below).
 `glide` eases to a pose
 in steps of at most `maxStep` counts instead of one 17-joint jump, and `fast`
 drops the inter-frame delay for dry runs.
@@ -921,7 +922,7 @@ python k1ctl.py card D:\
 | | |
 | --- | --- |
 | factory stunt scripts | **130** (9 `Action`, 55 `ProAction`, 66 `SpeAction`) |
-| added on this card | `ProAction/ZZTestPunch` (the copy probe) and `SpeAction/look left` / `look right` / `wave left` / `wave right` (below) |
+| added on this card | `ProAction/ZZTestPunch` (the copy probe) and `SpeAction/look left` / `look right` / `wave left` / `wave right` / `sit` / `stand` / `sit look left` / `sit look right` (below) |
 | actions in `robot.json` | **68** |
 | playable but unknown to the spec | **13**, all in `SpeAction` |
 | stunts present in both `ProAction` and `SpeAction` | 53 |
@@ -982,6 +983,12 @@ The classifier called this fall-risk because of the words "up" and the prone
 motion — the same words that make it the recovery. That, and `Left Kick`, are why
 the classifier is informational now instead of a veto: a factory action does not
 need an override, because it is a factory action.
+
+**A seated get-up now exists too, derived from a factory file.** `Take A Seat`
+is a complete sit-and-stand; splitting it after record 4 gives `sit` (ends
+seated) and `stand` (starts from that seated frame, ends standing). Both were
+verified on hardware. That only recovers from the seated pose — it is not a
+floor recovery; `Push Ups` remains that.
 
 Caveats, honestly: the *recovery* is **one observation**, from lying horizontally.
 A robot face-down may press into the floor instead of pushing off it, and nothing
@@ -1102,6 +1109,42 @@ plays; no silence needed. Play them with `routines/wave.json`:
 Both were watched on hardware: the correct arm went overhead and waved, the
 other stayed down, the sound played, and each ended standing. The 6 s settle
 between them is required.
+
+### Seated: sit, stand, and seated looks
+
+`Take A Seat` is a complete sit-and-stand. Record 4 is the seated dwell
+(thighs ≈104, calves ≈25, shoulders 20, arms down), and records 5–10 get back
+up. Splitting the file there gives reusable actions plus seated looks that do
+not stand the robot up first:
+
+| file | source | records | ends |
+| --- | --- | --- | --- |
+| `SpeAction/sit.sh` | Take A Seat 0–4 | 5 | seated, arms down |
+| `SpeAction/stand.sh` | Take A Seat 4–10 | 7 | neutral, standing |
+| `SpeAction/sit look left.sh` | record 4 body + head 0→20, byte 3 `80` | 2 | seated, head turned |
+| `SpeAction/sit look right.sh` | record 4 body + head 0→20, byte 3 `00` | 2 | seated, head turned |
+
+The split is exact factory records — no new joint values. All four carry the
+silent first-record id `0x53`, because the original 13 s `Take A Seat` clip no
+longer matches a 4 s sit or an 8 s stand. Play them together with
+`routines/sit.json`:
+
+```json
+{ "actionPath": "SpeAction/sit",           "grace": 30 },
+{ "actionPath": "SpeAction/sit look left",  "grace": 15 },
+{ "actionPath": "SpeAction/sit look right", "grace": 15 },
+{ "actionPath": "SpeAction/stand",          "grace": 30 }
+```
+
+Verified on hardware: `sit` alone held the seated pose and was stable, and the
+four-step sequence sat, looked both ways **without standing**, and stood up at
+the end. Two rules matter:
+
+- **Keep the steps close together.** `autoStand` is posture management: after an
+  idle gap it stands the robot back up. The seated sequence must not have a long
+  `speak` beat between its moves.
+- `stand` and both seated looks start from the seated frame. Played while the
+  robot is standing, they make it sit first.
 
 The stunt choreography is still only partly mapped, so fall-risk stays a
 name-based judgement — which is why `--allow-fall-risk` exists and why the block
