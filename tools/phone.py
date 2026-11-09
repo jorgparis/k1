@@ -52,6 +52,7 @@ BLURBS = {
     "grimm": "Un conte des frères Grimm à trois voix : le pêcheur, sa femme, et le poisson d'or.",
     "chat_botte": "Perrault à trois voix : un fils sans rien, un chat en bottes, et un ogre qui devient souris.",
     "bremen": "Quatre animaux trop vieux pour servir, une maison de voleurs, et un concert qui fait fuir tout le monde.",
+    "seated": "Le Loup et les Sept Chevreaux, joué assis : la chèvre, le loup et les chevreaux, et la tête qui suit chaque réplique.",
 }
 
 
@@ -71,8 +72,13 @@ def captions(steps: list[dict], timeline: list[dict], where: str) -> list[str | 
             continue
         if "speak" in step:
             want = ("speech", "sfx")
+            is_action = False
         elif "action" in step or "actionPath" in step:
-            want = ("action",)
+            # `renew` is the generator's label for a seated look that doubles as
+            # a pose renewal. It is an actionPath step in the routine, so the
+            # manifest's `renew` beats have to match here too.
+            want = ("action", "renew")
+            is_action = True
         else:
             raise SystemExit(f"{where}: step {i} is not speak/action/wait: {step!r}")
 
@@ -84,7 +90,7 @@ def captions(steps: list[dict], timeline: list[dict], where: str) -> list[str | 
                 f"the routine and manifest disagree"
             )
         found = timeline[beat]
-        if want == ("action",):
+        if is_action:
             # `actionPath` is the same kind of beat, but the manifest records
             # the path (that is the only name a card-only script has).
             wanted = step.get("action", step.get("actionPath"))
@@ -93,7 +99,7 @@ def captions(steps: list[dict], timeline: list[dict], where: str) -> list[str | 
                     f"{where}: step {i} is {wanted!r} but the manifest says "
                     f"{found['detail']!r}"
                 )
-        if want == ("speech", "sfx") and found["kind"] == "sfx":
+        if not is_action and found["kind"] == "sfx":
             notes.append("♪ " + found["detail"])
         else:
             speaker = found.get("speaker")

@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "phone"))
 
 import phone  # noqa: E402
+import story as story_plan  # noqa: E402
 from k1lib import protocol, spec  # noqa: E402
 
 VECTORS = [
@@ -88,11 +89,14 @@ def main() -> int:
 
         print("\n-- the routines are the ones k1ctl plays --")
         routines = sorted((ROOT / "routines").glob("story_*.json"))
-        report.check("six stories", len(routines) == 6, str(len(routines)))
         ids = {p.stem.removeprefix("story_") for p in routines}
+        report.check("every story table has a routine",
+                     set(story_plan.STORIES) <= ids,
+                     str(sorted(set(story_plan.STORIES) - ids)))
         report.check("the page embeds exactly those stories",
-                     {s["id"] for s in data["stories"]} == ids,
-                     str(sorted({s["id"] for s in data["stories"]} ^ ids)))
+                     {s["id"] for s in data["stories"]} == set(story_plan.STORIES),
+                     str(sorted({s["id"] for s in data["stories"]}
+                                ^ set(story_plan.STORIES))))
 
         for story in data["stories"]:
             rid = story["id"]

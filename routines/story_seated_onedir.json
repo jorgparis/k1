@@ -1,0 +1,104 @@
+{
+  "name": "story_seated_onedir",
+  "description": "Un conte assis : le robot s'assoit, raconte en trois voix, tourne la tête vers son public entre chaque réplique, puis se relève. Les mouvements de tête sont aussi ce qui maintient la pose : le record assis est transitoire et retombe si on ne le redemande pas toutes les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts sit / stand / sit look left / sit look right sur la carte. Ne pas désactiver autoStand. Variante unidirectionnelle : tous les regards vont à gauche ; la tête revient au centre avant chaque nouveau regard.",
+  "steps": [
+    {
+      "actionPath": "SpeAction/sit",
+      "grace": 22.6
+    },
+    {
+      "speak": "02/901"
+    },
+    {
+      "wait": 4.12
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/902"
+    },
+    {
+      "wait": 2.15
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/903"
+    },
+    {
+      "wait": 3.54
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/904"
+    },
+    {
+      "wait": 4.11
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/905"
+    },
+    {
+      "wait": 2.69
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/906"
+    },
+    {
+      "wait": 2.97
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/907"
+    },
+    {
+      "wait": 4.11
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/908"
+    },
+    {
+      "wait": 2.85
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/909"
+    },
+    {
+      "wait": 2.6
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "actionPath": "SpeAction/stand",
+      "grace": 25.1
+    }
+  ]
+}

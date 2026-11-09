@@ -1,0 +1,104 @@
+{
+  "name": "story_seated",
+  "description": "Un conte assis : le robot s'assoit, raconte en trois voix, tourne la t\u00eate vers son public entre chaque r\u00e9plique, puis se rel\u00e8ve. Les mouvements de t\u00eate sont aussi ce qui maintient la pose : le record assis est transitoire et retombe si on ne le redemande pas toutes les ~5 s. N\u00e9cessite les 02/*.mp3 (901+) et les scripts sit / stand / sit look left / sit look right sur la carte. Ne pas d\u00e9sactiver autoStand.",
+  "steps": [
+    {
+      "actionPath": "SpeAction/sit",
+      "grace": 22.6
+    },
+    {
+      "speak": "02/901"
+    },
+    {
+      "wait": 4.12
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/902"
+    },
+    {
+      "wait": 2.15
+    },
+    {
+      "actionPath": "SpeAction/sit look right",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/903"
+    },
+    {
+      "wait": 3.54
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/904"
+    },
+    {
+      "wait": 4.11
+    },
+    {
+      "actionPath": "SpeAction/sit look right",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/905"
+    },
+    {
+      "wait": 2.69
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/906"
+    },
+    {
+      "wait": 2.97
+    },
+    {
+      "actionPath": "SpeAction/sit look right",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/907"
+    },
+    {
+      "wait": 4.11
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/908"
+    },
+    {
+      "wait": 2.85
+    },
+    {
+      "actionPath": "SpeAction/sit look right",
+      "grace": 16.4
+    },
+    {
+      "speak": "02/909"
+    },
+    {
+      "wait": 2.6
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
+    },
+    {
+      "actionPath": "SpeAction/stand",
+      "grace": 25.1
+    }
+  ]
+}

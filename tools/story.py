@@ -394,6 +394,53 @@ BREMEN_CAST = {
                "fx": {"lowpass": 2200, "echo": 0.12}},
 }
 
+# The seated tale. Two hardware facts set the shape:
+#   * record 4 of `Take A Seat` is a transient pose, not a rest pose: left alone
+#     it drifts backward and posture management eventually rights the robot. A
+#     55 s test held it only because the pose was re-commanded every ~6 s.
+#   * `SpeAction/sit look left|right` start at that seated record and move only
+#     the head, so each one IS a renewal. With the fast timing bytes (see the
+#     plan's clocks) a look is ~1.4 s, and alternating left/right reads as a
+#     deliberate turn toward different listeners rather than a sweep. The owner
+#     compared this against an all-left version and preferred the alternation.
+#     The all-left variant is kept as `routines/story_seated_onedir.json`.
+# So every narration line is followed by a `renew`, and the seated run is kept
+# to about a minute. autoStand stays ON throughout: it is the backstop.
+SEATED_CAST = {
+    "narrator": {"engine": "onecore", "voice": "Microsoft Hortense",
+                 "rate": 0, "pitch": "0%", "label": ""},
+    "mother": {"engine": "onecore", "voice": "Microsoft Hortense",
+               "rate": -2, "pitch": "-8%", "label": "LA CHÈVRE"},
+    "wolf": {"engine": "onecore", "voice": "Microsoft Paul",
+             "rate": -10, "pitch": "-20%", "label": "LE LOUP",
+             "fx": {"lowpass": 1800, "echo": 0.08}},
+    "kid": {"engine": "onecore", "voice": "Microsoft Julie",
+            "rate": 6, "pitch": "+14%", "label": "LE CHEVREAU"},
+}
+
+SEATED = [
+    ("actionPath", "SpeAction/sit"),
+    ("say", "Asseyez-vous. Je vais vous raconter une histoire.", "narrator"),
+    ("renew", "left"),
+    ("say", "Une chèvre avait sept chevreaux.", "narrator"),
+    ("renew", "right"),
+    ("say", "N'ouvrez à personne. Le loup rôde.", "mother"),
+    ("renew", "left"),
+    ("say", "Petits, petits, ouvrez-moi. C'est votre mère.", "wolf"),
+    ("renew", "right"),
+    ("say", "Ta voix est trop grosse ! Tu es le loup !", "kid"),
+    ("renew", "left"),
+    ("say", "Le loup avala de la craie pour adoucir sa voix.", "narrator"),
+    ("renew", "right"),
+    ("say", "Petits, petits, ouvrez-moi. C'est votre mère.", "wolf"),
+    ("renew", "left"),
+    ("say", "Montre-nous ta patte ! Elle est toute noire !", "kid"),
+    ("renew", "right"),
+    ("say", "Et les sept chevreaux ne lui ouvrirent pas. Fin.", "narrator"),
+    ("renew", "left"),
+    ("actionPath", "SpeAction/stand"),
+]
+
 BREMEN = [
     ("sfx", "sparkle"),
     ("say", "Il était une fois un âne qui portait les sacs de son maître depuis "
@@ -560,6 +607,37 @@ STORIES = {
                        "chien, un chat, un coq et un voleur. Nécessite ses "
                        "02/*.mp3 (801+) sur la carte, sinon la narration est "
                        "muette et seules les cascades jouent.",
+    },
+    "seated": {
+        "title": "Le Loup et les Sept Chevreaux (assis)",
+        "language": "FR",
+        "table": SEATED,
+        "first_id": 901,
+        "build": ROOT / "build" / "story" / "seated",
+        "routine": ROOT / "routines" / "story_seated.json",
+        "voice": "Microsoft Hortense",
+        "rate": 0,
+        "cast": SEATED_CAST,
+        # The split card files have no robot.json clock, so their durations are
+        # given here, in milliseconds like every other bench clock. sit and
+        # stand are the firmware clocks measured on hardware. The seated looks
+        # now carry the *standing* look's timing bytes (speed 40 / 20, emphasis
+        # 0), which clocked at 1375 ms; the old seated wording (speed 30,
+        # emphasis 40) took 9438 ms.
+        "clocks": {
+            "SpeAction/sit": 7625,
+            "SpeAction/stand": 10094,
+            "SpeAction/sit look left": 1375,
+            "SpeAction/sit look right": 1375,
+        },
+        "description": "Un conte assis : le robot s'assoit, raconte en trois "
+                       "voix, tourne la tête vers son public entre chaque "
+                       "réplique, puis se relève. Les mouvements de tête sont "
+                       "aussi ce qui maintient la pose : le record assis est "
+                       "transitoire et retombe si on ne le redemande pas toutes "
+                       "les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts "
+                       "sit / stand / sit look left / sit look right sur la "
+                       "carte. Ne pas désactiver autoStand.",
     },
 }
 
@@ -1270,6 +1348,7 @@ def main() -> int:
     CAST = plan.get("cast", {})
 
     observed = measured_actions()
+    observed.update(plan.get("clocks", {}))
     BUILD.mkdir(parents=True, exist_ok=True)
     CARD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1299,7 +1378,17 @@ def main() -> int:
         kind, payload = beat_spec[0], beat_spec[1]
         who = beat_spec[2] if len(beat_spec) > 2 else None
         speaker = ""
-        if kind in ("action", "actionPath"):
+        if kind == "renew":
+            # A seated look doubles as the pose renewal: it starts at record 4
+            # and re-sends the body, so it must not wait out the 6 s stunt
+            # settle. Keeping it out of `last_action_end` also keeps the final
+            # `stand` from inheriting a settle it does not need.
+            path = f"SpeAction/sit look {payload}"
+            duration, source = clock_for(path, observed)
+            steps.append({"actionPath": path,
+                          "grace": round(duration + GRACE_S, 1)})
+            label, detail = "renew", path
+        elif kind in ("action", "actionPath"):
             # The 6 s rule is about the gap between *actions*, so it is applied
             # here rather than after every beat: narration earns credit toward
             # it, and only the shortfall becomes silence. `actionPath` is the

@@ -15,6 +15,7 @@ SUITES = [
     ("choreography showcase validates", ["smoke.py", "routines/showcase.json", "--fast"]),
     ("declared duration table", ["test_durations.py"]),
     ("action duration benchmark", ["test_bench.py"]),
+    ("seated story and renewal rule", ["test_seated.py"]),
     ("phone player (Web Bluetooth page)", ["test_phone.py"]),
 ]
 

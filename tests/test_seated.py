@@ -1,0 +1,140 @@
+"""The seated story and the renewal rule.
+
+`Take A Seat`'s record 4 is a transient frame, not a rest pose. A seated run is
+only safe while that frame keeps being re-commanded: the 55 s hardware test held
+because `sit look left/right` re-send it roughly every 6 s. With `autoStand` off
+the same pose ended supine on the floor, so this is not a style choice.
+
+Two hardware findings shape the checks:
+
+  1. every narration line in the generated story is followed by a seated look,
+     which is also the renewal;
+  2. the look must be the fast wording (the standing look's timing bytes), or
+     the story spends ~9.4 s per look in silence. With the fast wording it is
+     ~1.4 s and the narration has no blanks.
+
+Two direction patterns are validated on hardware: alternating left/right (the
+preferred one) and all-left (kept as a variant). Both are checked here so a
+regeneration cannot silently lose either shape.
+"""
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from harness import ROOT, Report  # noqa: E402
+
+LOOKS = {"SpeAction/sit look left", "SpeAction/sit look right"}
+SIT = "SpeAction/sit"
+STAND = "SpeAction/stand"
+MAX_GAP_S = 5.0     # the tested wait between renewals (55 s hold, 5 s waits)
+MAX_SEATED_S = 60.0
+
+
+def steps(path: Path) -> list[dict]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data["steps"]
+
+
+def seated_span(steps: list[dict], clocks: dict[str, float]) -> float:
+    """Seconds from the end of `sit` to the start of `stand`."""
+    span = 0.0
+    inside = False
+    for step in steps:
+        if step.get("actionPath") == SIT:
+            span = 0.0
+            inside = True
+            continue
+        if step.get("actionPath") == STAND:
+            inside = False
+            continue
+        if not inside:
+            continue
+        if "wait" in step:
+            span += float(step["wait"])
+        elif "actionPath" in step:
+            span += clocks.get(step["actionPath"], 2.0)
+    return span
+
+
+def check_shape(report: Report, story: list[dict]) -> list[str]:
+    """Shared checks for any seated routine; returns its look paths."""
+    paths = [s["actionPath"] for s in story if "actionPath" in s]
+    report.check("starts seated", paths[0] == SIT, paths[0])
+    report.check("ends standing", paths[-1] == STAND, paths[-1])
+    report.check("only the verified seated scripts are used",
+                 set(paths) <= LOOKS | {SIT, STAND},
+                 str(sorted(set(paths) - LOOKS - {SIT, STAND})))
+
+    speaks = [i for i, s in enumerate(story) if "speak" in s]
+    looks = [i for i, s in enumerate(story) if s.get("actionPath") in LOOKS]
+    report.check("every line gets a head turn", len(speaks) == len(looks),
+                 f"{len(speaks)} lines, {len(looks)} looks")
+    interleaved = all(
+        any(s < look < (speaks[i + 1] if i + 1 < len(speaks) else len(story))
+            for look in looks)
+        for i, s in enumerate(speaks)
+    )
+    report.check("a look follows every line before the next one", interleaved)
+
+    longest_wait = max((float(s["wait"]) for s in story if "wait" in s), default=0.0)
+    report.check(f"no silence longer than {MAX_GAP_S} s", longest_wait <= MAX_GAP_S,
+                 f"longest {longest_wait:.2f}s")
+    return [s["actionPath"] for s in story if s.get("actionPath") in LOOKS]
+
+
+def main() -> int:
+    report = Report("seated story and renewal rule")
+    clocks = {"SpeAction/sit": 7.625, "SpeAction/stand": 10.094,
+              "SpeAction/sit look left": 1.375, "SpeAction/sit look right": 1.375}
+
+    print("\n-- story_seated.json (alternating) --")
+    story = steps(ROOT / "routines" / "story_seated.json")
+    look_paths = check_shape(report, story)
+    want = (["SpeAction/sit look left", "SpeAction/sit look right"]
+            * len(look_paths))[:len(look_paths)]
+    report.check("head turns alternate left/right", look_paths == want,
+                 " ".join(look_paths))
+    span = seated_span(story, clocks)
+    report.check(f"seated run under {MAX_SEATED_S} s", span <= MAX_SEATED_S, f"{span:.1f}s")
+
+    print("\n-- story_seated_onedir.json (single direction) --")
+    one = steps(ROOT / "routines" / "story_seated_onedir.json")
+    one_looks = check_shape(report, one)
+    report.check("all head turns look left",
+                 set(one_looks) == {"SpeAction/sit look left"},
+                 " ".join(one_looks))
+
+    print("\n-- routines/sit.json --")
+    short = steps(ROOT / "routines" / "sit.json")
+    short_paths = [s["actionPath"] for s in short if "actionPath" in s]
+    report.check("starts seated", short_paths[0] == SIT)
+    report.check("ends standing", short_paths[-1] == STAND)
+    report.check("no idle gap inside the short sequence",
+                 not any("wait" in s for s in short))
+    report.check("look shows both directions",
+                 LOOKS <= set(short_paths), str(sorted(set(short_paths))))
+
+    print("\n-- story table (tools/story.py) --")
+    sys.path.insert(0, str(ROOT / "tools"))
+    import story as story_tool  # noqa: E402
+
+    table = story_tool.SEATED
+    kinds = [beat[0] for beat in table]
+    report.check("table starts with sit and ends with stand",
+                 kinds[0] == "actionPath" and table[0][1] == SIT
+                 and kinds[-1] == "actionPath" and table[-1][1] == STAND)
+    say_at = [i for i, k in enumerate(kinds) if k == "say"]
+    report.check("every say is followed by a renew",
+                 all(i + 1 < len(kinds) and kinds[i + 1] == "renew" for i in say_at))
+    renew_sides = [table[i][1] for i in range(len(kinds) - 1) if kinds[i] == "renew"]
+    report.check("renews alternate left/right",
+                 all(a != b for a, b in zip(renew_sides, renew_sides[1:])),
+                 " ".join(renew_sides))
+
+    print()
+    return report.finish()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
