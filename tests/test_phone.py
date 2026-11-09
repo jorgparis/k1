@@ -158,6 +158,45 @@ def main() -> int:
                              1 for s in steps if "action" in s or "actionPath" in s)
                          and story["clip_count"] == sum(1 for s in steps if "speak" in s))
 
+        print("\n-- the moves menu covers everything the phone can play --")
+        moves = data["moves"]
+        move_paths = [m["path"] for m in moves]
+        report.check("every spec action is in the menu",
+                     set(data["actions"].values()) <= set(move_paths),
+                     str(sorted(set(data["actions"].values()) - set(move_paths))))
+        report.check("no duplicate move paths",
+                     len(move_paths) == len(set(move_paths)),
+                     f"{len(move_paths)} vs {len(set(move_paths))}")
+        report.check("menu names are unique",
+                     len({m["name"] for m in moves}) == len(moves))
+        bad_paths = [m["path"] for m in moves
+                     if not re.fullmatch(r"[A-Za-z]+/[^/]+", str(m["path"]))]
+        report.check("every move path is Folder/name", not bad_paths,
+                     str(bad_paths))
+        report.check("every move has a positive grace",
+                     all(float(m.get("grace", 0)) > 0 for m in moves))
+        report.check("unknown clocks stay null instead of a guess",
+                     all(m["seconds"] is None or float(m["seconds"]) > 0
+                         for m in moves))
+        report.check("the menu groups are known",
+                     {m["group"] for m in moves} <= {"Card", "Action", "ProAction"},
+                     str(sorted({m["group"] for m in moves})))
+        card = {m["path"]: m for m in moves if m["group"] == "Card"}
+        wanted = {"SpeAction/sit", "SpeAction/stand", "SpeAction/sit look left",
+                  "SpeAction/sit look right", "SpeAction/look left",
+                  "SpeAction/look right", "SpeAction/wave left",
+                  "SpeAction/wave right", "SpeAction/shake head"}
+        report.check("the card-only moves are in the menu", wanted <= set(card),
+                     str(sorted(wanted - set(card))))
+        report.check("the seated moves warn that they leave it seated",
+                     all("seated" in card[p].get("note", "")
+                         for p in ("SpeAction/sit", "SpeAction/sit look left",
+                                   "SpeAction/sit look right")))
+        report.check("the menu never shadows a spec path",
+                     all(m["path"].lower() not in
+                         {p.lower() for p in data["actions"].values()}
+                         for m in moves if m["group"] == "Card"))
+
         print("\n-- encoder matches k1lib byte for byte --")
         vectors = [{"name": name, "type": kind, "payload": payload,
                     "hex": protocol.packet(spec.code(kind), payload).hex(),

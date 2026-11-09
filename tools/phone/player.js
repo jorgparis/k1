@@ -32,6 +32,7 @@
     stream: { remainder: new Uint8Array(0) },
     action: null,
     run: null,
+    lastActionEnd: null,
     wake: null,
     writeChain: Promise.resolve()
   };
@@ -466,6 +467,7 @@
           await performAction(step);
         }
         lastActionDone = now();
+        state.lastActionEnd = lastActionDone;
       } else {
         throw new Error("unknown step " + JSON.stringify(step));
       }
@@ -473,6 +475,98 @@
       // i_routine's breath after each intent (not after an explicit wait).
       if (DATA.gap > 0) await nap(DATA.gap);
     }
+  }
+
+  // A single move from the menu: same wire rules as a story beat, but with no
+  // narration or waits in front of it. The 6 s settle is enforced here too,
+  // because a stunt frame sent too soon after the previous one is dropped.
+  async function settleFirst(name) {
+    if (state.lastActionEnd === null) return;
+    var gap = (now() - state.lastActionEnd) / 1000;
+    if (gap >= DATA.settle) return;
+    var extra = DATA.settle - gap;
+    log("settle backstop: " + extra.toFixed(1) + "s more before " + name, "warn");
+    setStageSub("settle " + extra.toFixed(1) + "s");
+    await nap(extra);
+  }
+
+  async function runMove(move, rehearsal) {
+    var step = { actionPath: move.path, grace: move.grace };
+    await settleFirst(move.name);
+    if (rehearsal) await rehearseAction(step);
+    else await performAction(step);
+    state.lastActionEnd = now();
+  }
+
+  function playMove(move) {
+    if (!move || state.running) return;
+    if (state.blocked) {
+      log('Stop was sent. Watch the robot until it is standing, then tap "Robot is ready".', "warn");
+      return;
+    }
+    var rehearsal = els.chkRehearse.checked;
+    if (!rehearsal && !state.connected) {
+      log("Not connected. Tap Connect first, or tick Rehearse to walk the move without the robot.", "bad");
+      setStatus("Disconnected", "off");
+      return;
+    }
+
+    state.running = true;
+    state.abort = false;
+    state.blocked = false;
+    state.runId += 1;
+    var runId = state.runId;
+    state.run = { move: move, t0: now(), expected: move.seconds || 5 };
+
+    els.stage.hidden = false;
+    els.stageTitle.textContent = move.name + (rehearsal ? " · rehearsal" : "");
+    setStageState("playing", "live");
+    setCaption(move.name, "action");
+    setStageSub("move · " + move.path);
+    els.barFill.style.width = "0%";
+    els.timeNow.textContent = "0:00";
+    els.timeTotal.textContent = move.seconds ? mmss(move.seconds) : "—";
+    log("move " + move.name + " (" + move.path + ")" +
+        (rehearsal ? " (rehearsal)" : ""), "stunt");
+    render();
+    acquireWake();
+
+    var ticker = setInterval(function () {
+      if (!state.run) return;
+      var elapsed = (now() - state.run.t0) / 1000;
+      var frac = Math.min(0.999, elapsed / Math.max(1, state.run.expected));
+      els.barFill.style.width = (frac * 100).toFixed(1) + "%";
+      els.timeNow.textContent = mmss(elapsed);
+    }, 200);
+
+    runMove(move, rehearsal).then(function () {
+      if (!state.abort) {
+        els.barFill.style.width = "100%";
+        setStageState("finished", "ok");
+        setStageSub("finished");
+        setCaption("Finished.", "done");
+        log("move finished — watch the robot until it is still.", "ok");
+      }
+    }).catch(function (err) {
+      if (err && err.name === "AbortError") {
+        setStageState("stopped", "warn");
+        setStageSub("stopped");
+        log("move stopped.", "warn");
+      } else {
+        setStageState("aborted", "bad");
+        setStageSub(describe(err));
+        log("ABORTED: " + describe(err), "bad");
+        state.blocked = true;
+        log('Do not start another move yet. Watch the robot; when it is standing and still, tap "Robot is ready".', "warn");
+      }
+    }).then(function () {
+      if (runId !== state.runId) return;
+      clearInterval(ticker);
+      state.running = false;
+      if (!state.abort) state.action = null;
+      releaseWake();
+      render();
+    });
   }
 
   // -------------------------------------------------------------- playback
@@ -618,6 +712,16 @@
     var buttons = els.stories.querySelectorAll("button.play");
     for (var i = 0; i < buttons.length; i++) buttons[i].disabled = state.running || state.blocked;
 
+    els.moveSearch.disabled = state.running;
+    els.moveAll.disabled = state.running;
+    els.moveCard.disabled = state.running;
+    els.moveProAction.disabled = state.running;
+    els.moveAction.disabled = state.running;
+    var moveButtons = els.moveGrid.querySelectorAll("button.move");
+    for (var j = 0; j < moveButtons.length; j++) {
+      moveButtons[j].disabled = state.running || state.blocked;
+    }
+
     if (state.connected) els.connectHint.textContent = "Connected. Keep this tab in the foreground while a story runs; a background tab can have its timers throttled.";
     else if (els.chkRehearse.checked) els.connectHint.textContent = "Rehearsal: the timeline, captions and stunts step through without a robot. Nothing is sent.";
     else els.connectHint.textContent = "Close the K One app first — the robot accepts one Bluetooth connection. Tap Connect, pick K1-…, then keep this tab in front.";
@@ -665,6 +769,87 @@
 
       els.stories.appendChild(card);
     });
+  }
+
+  var moveFilter = "all";
+  var moveQuery = "";
+  var MOVE_GROUPS = ["Card", "ProAction", "Action"];
+  var MOVE_GROUP_LABELS = {
+    Card: "Card & custom", ProAction: "Stunts", Action: "Shows"
+  };
+
+  function moveSub(move) {
+    var bits = [(move.seconds === null ? "clock unknown"
+      : (move.seconds >= 60 ? mmss(move.seconds) : move.seconds.toFixed(1) + " s"))];
+    if (move.note) bits.push(move.note);
+    else if (move.verified === "no") bits.push("no motion observed");
+    return bits.join(" · ");
+  }
+
+  function setMoveFilter(group) {
+    moveFilter = group;
+    var map = { all: els.moveAll, Card: els.moveCard,
+                ProAction: els.moveProAction, Action: els.moveAction };
+    for (var key in map) {
+      map[key].className = "chipbtn" + (key === group ? " on" : "");
+    }
+    renderMoves();
+  }
+
+  function renderMoves() {
+    els.moveGrid.textContent = "";
+    var q = moveQuery.trim().toLowerCase();
+    var shown = 0;
+
+    MOVE_GROUPS.forEach(function (group) {
+      if (moveFilter !== "all" && moveFilter !== group) return;
+      var items = DATA.moves.filter(function (move) {
+        if (move.group !== group) return false;
+        if (!q) return true;
+        return move.name.toLowerCase().indexOf(q) !== -1 ||
+               move.path.toLowerCase().indexOf(q) !== -1;
+      });
+      if (!items.length) return;
+      shown += items.length;
+
+      var block = document.createElement("div");
+      block.className = "moveGroup";
+      var head = document.createElement("h3");
+      head.textContent = MOVE_GROUP_LABELS[group] || group;
+      block.appendChild(head);
+
+      var grid = document.createElement("div");
+      grid.className = "moveGrid";
+      items.forEach(function (move) {
+        var caution = /seated|assumes it is seated/.test(move.note || "");
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "move" + (caution ? " caution" : "") +
+                        (move.verified === null ? " untested" : "");
+        btn.title = move.path + (move.note ? " — " + move.note : "");
+        var name = document.createElement("span");
+        name.className = "nm";
+        name.textContent = move.name;
+        var sub = document.createElement("span");
+        sub.className = "sub";
+        sub.textContent = moveSub(move);
+        btn.appendChild(name);
+        btn.appendChild(sub);
+        btn.addEventListener("click", function () { playMove(move); });
+        grid.appendChild(btn);
+      });
+      block.appendChild(grid);
+      els.moveGrid.appendChild(block);
+    });
+
+    if (!shown) {
+      var empty = document.createElement("p");
+      empty.className = "moveEmpty";
+      empty.textContent = q ? "No move matches “" + moveQuery + "”."
+                            : "No moves in this group.";
+      els.moveGrid.appendChild(empty);
+    }
+    els.moveCount.textContent = shown + (shown === 1 ? " move" : " moves");
   }
 
   function diagnostics() {
@@ -718,6 +903,13 @@
       chkRehearse: $("chkRehearse"),
       chkWithResponse: $("chkWithResponse"),
       stories: $("stories"),
+      moveCount: $("moveCount"),
+      moveSearch: $("moveSearch"),
+      moveGrid: $("moveGrid"),
+      moveAll: $("moveAll"),
+      moveCard: $("moveCard"),
+      moveProAction: $("moveProAction"),
+      moveAction: $("moveAction"),
       stage: $("stage"),
       stageTitle: $("stageTitle"),
       stageState: $("stageState"),
@@ -744,7 +936,17 @@
     els.btnCopyLog.addEventListener("click", copyLog);
     els.btnClearLog.addEventListener("click", function () { els.log.textContent = ""; });
 
+    els.moveAll.addEventListener("click", function () { setMoveFilter("all"); });
+    els.moveCard.addEventListener("click", function () { setMoveFilter("Card"); });
+    els.moveProAction.addEventListener("click", function () { setMoveFilter("ProAction"); });
+    els.moveAction.addEventListener("click", function () { setMoveFilter("Action"); });
+    els.moveSearch.addEventListener("input", function () {
+      moveQuery = els.moveSearch.value;
+      renderMoves();
+    });
+
     buildStories();
+    renderMoves();
     diagnostics();
     setStatus("Disconnected", "off");
     render();
@@ -768,6 +970,7 @@
   // Exposed for the console and for tests that load this file under a stub DOM.
   window.K1Player = {
     play: play,
+    playMove: playMove,
     stop: stop,
     ready: ready,
     connect: connect,

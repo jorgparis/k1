@@ -83,7 +83,9 @@ var ids = [
   "statusText", "statusDot", "connectHint", "btnConnect", "btnDisconnect",
   "chkAll", "chkRehearse", "chkWithResponse", "stories", "stage", "stageTitle", "stageState",
   "caption", "captionSub", "barFill", "timeNow", "timeTotal", "btnStop",
-  "btnReady", "log", "diag", "envWarn", "btnCopyLog", "btnClearLog"
+  "btnReady", "log", "diag", "envWarn", "btnCopyLog", "btnClearLog",
+  "moveCount", "moveSearch", "moveGrid", "moveAll", "moveCard",
+  "moveProAction", "moveAction"
 ];
 ids.forEach(function (id) {
   var el = new El("div");
@@ -182,6 +184,17 @@ var DATA = {
   service: "0000ffe0-0000-1000-8000-00805f9b34fb",
   characteristic: "0000ffe1-0000-1000-8000-00805f9b34fb",
   actions: { "Say Hello": "ProAction/Say Hello" },
+  moves: [
+    {
+      name: "Say Hello", path: "ProAction/Say Hello", group: "ProAction",
+      seconds: 15.0, grace: 30.0, source: "measured", verified: "yes", note: ""
+    },
+    {
+      name: "sit", path: "SpeAction/sit", group: "Card",
+      seconds: 7.625, grace: 22.6, source: "measured", verified: "yes",
+      note: "leaves it seated; the pose is transient"
+    }
+  ],
   stories: [
     {
       id: "test", title: "Test", language: "EN", blurb: "",
@@ -312,6 +325,16 @@ async function main() {
   check("play is blocked until the robot is acknowledged", player.state.blocked === true);
   player.ready();
   check("ready clears the block", player.state.blocked === false);
+
+  console.log("\n-- the moves menu plays one action --");
+  player.state.lastActionEnd = null;
+  var moveBefore = sent.length;
+  player.playMove(player.data.moves[0]);
+  await waitFor(function () { return !player.state.running; }, "move finish");
+  check("menu move sent an action frame", sent.length > moveBefore);
+  check("menu move waited for progress",
+        logText().indexOf("Say Hello 100% after") !== -1);
+  check("menu move reports finished", logText().indexOf("move finished") !== -1);
 
   console.log("\n" + (failures ? failures + " FAILURE(S)" : "ALL PASS") +
               "  (" + checks + " checks)");

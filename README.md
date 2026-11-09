@@ -326,11 +326,11 @@ Android does not expose BLE to a Linux userland, so Termux cannot run
 `k1ctl.py` — `bleak`, `noble` and BlueZ all need an HCI or D-Bus daemon that
 Android keeps behind its Java API, and `termux-api` has no Bluetooth calls. What
 Android *does* have is Chrome's Web Bluetooth. `tools/phone.py` packs the frame
-codec, the six routines and their captions into one self-contained page:
+codec, the seven routines and their captions into one self-contained page:
 
 ```bash
 python3 tools/phone.py
-# phone player -> build/phone/k1-story.html  (66 KB)
+# phone player -> build/phone/k1-story.html  (90 KB)
 # Windows path -> C:\Users\<you>\k1\build\phone\k1-story.html
 ```
 
@@ -346,6 +346,15 @@ as a backstop, and each action's `grace`. It also adds what a phone needs and a
 terminal does not: large captions, a progress bar, a **Stop** button, screen
 wake-lock, a diagnostics log of every frame, and a **Rehearse** mode that walks
 the timeline with no robot at all.
+
+Below the stories the same page has a **Moves** menu: all 68 `robot.json`
+actions plus the 21 card-only and custom scripts, filterable by group and
+searchable by name. Tapping one plays that action alone under the same wire
+rules, and the 6 s settle is enforced between menu moves too. Each entry shows
+the clock measured on hardware where one exists; scripts nobody has timed say
+`clock unknown` rather than borrowing a number. Moves that leave the robot
+seated (`sit`, `sit look left/right`, `stand`) are flagged, because record 4 is
+a transient pose and needs a renewal or the matching `stand`.
 
 To run it: copy `k1-story.html` to the phone (USB/MTP, email, Drive — anything),
 open it in **Chrome on Android**, close the **K One** app, tap **Connect**, pick
@@ -368,9 +377,12 @@ so a stack that refuses long writes without a response may need the **Force
 write-with-response** checkbox (the GATT layer then fragments the same frame at
 the MTU); and a stale Chrome tab or a background tab can throttle timers, which
 is why the page holds a wake lock and warns when it loses focus. This path has
-not been performed on hardware yet — the offline proof is 51 checks in
-`tests/test_phone.py`, including a fake robot that streams progress, drops an
-unprovoked 100, and rejects a no-response write to force the fallback.
+not been performed on hardware yet — the offline proof is 119 checks in
+`tests/test_phone.py` plus 24 in `tools/phone/check_player.js`, including a fake
+robot that streams progress, drops an unprovoked 100, and rejects a no-response
+write to force the fallback. The Moves menu is covered too: every spec path and
+every card-only script is present, no clock is invented, and no menu entry
+shadows a path `robot.json` already names.
 
 ### Durations: declared, now measured
 

@@ -55,6 +55,94 @@ BLURBS = {
     "seated": "Le Loup et les Sept Chevreaux, joué assis : la chèvre, le loup et les chevreaux, et la tête qui suit chaque réplique.",
 }
 
+# The moves menu: every spec action plus the scripts this card holds that
+# robot.json never names. A card script has no declared clock, so each tuple
+# carries the clock measured on hardware where one exists (None means nobody has
+# timed it; the menu says so rather than inventing a number).
+#
+# (name, path, measured seconds or None, confirmed, note)
+CARD_MOVES = [
+    ("shake head", "SpeAction/shake head", 4.469, "yes", ""),
+    ("look left", "SpeAction/look left", 1.375, "yes", "silent"),
+    ("look right", "SpeAction/look right", 1.375, "yes", "silent"),
+    ("wave left", "SpeAction/wave left", None, "yes", "plays the Wave Hands clip"),
+    ("wave right", "SpeAction/wave right", None, "yes", "plays the Wave Hands clip"),
+    ("sit", "SpeAction/sit", 7.625, "yes", "leaves it seated; the pose is transient"),
+    ("sit look left", "SpeAction/sit look left", 1.375, "yes", "renews the seated pose; leaves it seated"),
+    ("sit look right", "SpeAction/sit look right", 1.375, "yes", "renews the seated pose; leaves it seated"),
+    ("stand", "SpeAction/stand", 10.094, "yes", "assumes it is seated"),
+    # The other unique SpeAction scripts: present on the card, invisible to
+    # robot.json. The four arm raises were watched in the left/right pairs run.
+    ("Raise Left Hand", "SpeAction/Raise Left Hand", None, "yes", ""),
+    ("Raise Right Hand", "SpeAction/Raise Right Hand", None, "yes", ""),
+    ("lift your left arm", "SpeAction/lift your left arm", None, "yes", ""),
+    ("lift your right arm", "SpeAction/lift your right arm", None, "yes", ""),
+    ("Resume Standing", "SpeAction/Resume Standing", None, "no", "reported 100% and did not move"),
+    ("Chest Up", "SpeAction/Chest Up", None, None, "not watched yet"),
+    ("Open Arms", "SpeAction/Open Arms", None, None, "not watched yet"),
+    ("Open Legs", "SpeAction/Open Legs", None, None, "not watched yet"),
+    ("Raise Your Hands", "SpeAction/Raise Your Hands", None, None, "not watched yet"),
+    ("lift your arms", "SpeAction/lift your arms", None, None, "not watched yet"),
+    ("pose to take off", "SpeAction/pose to take off", None, None, "not watched yet"),
+    ("showtime", "SpeAction/showtime", None, None, "not watched yet"),
+]
+MOVE_GROUPS = ["Card", "ProAction", "Action"]
+UNKNOWN_MOVE_GRACE_S = 30.0
+
+
+def move_entries(actions: dict[str, dict]) -> list[dict]:
+    """Every action the phone can play, with a clock and a grace for each.
+
+    The 68 spec actions resolve through `robot.json` and prefer the hardware
+    clock from `build/bench/all68.json` when this checkout has it. The card-only
+    scripts cannot be looked up at all, so their clocks live in `CARD_MOVES`.
+    """
+    measured = story_plan.measured_actions()
+    confirmed: dict[str, str] = {}
+    try:
+        payload = json.loads((ROOT / "build" / "bench" / "all68.json")
+                             .read_text(encoding="utf-8"))
+        for row in payload.get("rows", []):
+            if row.get("name"):
+                confirmed[row["name"]] = row.get("confirmed")
+    except (OSError, ValueError):
+        pass
+
+    moves = []
+    for name, entry in actions.items():
+        seconds = measured.get(name)
+        if seconds is None:
+            seconds = measured.get(entry["path"].lower())
+        source = "measured" if seconds is not None else "declared"
+        seconds = (seconds / 1000.0 if seconds is not None
+                   else entry["duration_ms"] / 1000.0)
+        moves.append({
+            "name": name,
+            "path": entry["path"],
+            "group": entry["folder"],
+            "seconds": round(seconds, 3),
+            "grace": round(seconds + story_plan.GRACE_S, 1),
+            "source": source,
+            "verified": confirmed.get(name),
+            "note": "",
+        })
+
+    for name, path, seconds, verified, note in CARD_MOVES:
+        moves.append({
+            "name": name,
+            "path": path,
+            "group": "Card",
+            "seconds": None if seconds is None else round(seconds, 3),
+            "grace": (round(seconds + story_plan.GRACE_S, 1)
+                      if seconds is not None else UNKNOWN_MOVE_GRACE_S),
+            "source": "measured" if seconds is not None else "unknown",
+            "verified": verified,
+            "note": note,
+        })
+
+    moves.sort(key=lambda m: (MOVE_GROUPS.index(m["group"]), m["name"].lower()))
+    return moves
+
 
 def captions(steps: list[dict], timeline: list[dict], where: str) -> list[str | None]:
     """Pair each routine step with the manifest's own words for it.
@@ -243,6 +331,7 @@ def build(out: Path) -> dict:
         "service": spec.service_uuid(),
         "characteristic": spec.characteristic_uuid(),
         "actions": actions,
+        "moves": move_entries(spec.actions()),
         "stories": stories,
     }
 
@@ -259,7 +348,7 @@ def build(out: Path) -> dict:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(shell, encoding="utf-8")
     return {"path": out, "stories": stories, "bytes": len(shell.encode("utf-8")),
-            "actions": actions}
+            "actions": actions, "moves": data["moves"]}
 
 
 def windows_path(path: Path) -> str | None:
@@ -290,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  service         {spec.service_uuid()}")
     print(f"  characteristic  {spec.characteristic_uuid()}")
     print(f"  action paths    {len(result['actions'])}")
+    print(f"  moves in menu   {len(result['moves'])}")
     print()
     print("Copy the file to the phone, open it in Chrome, close the K One app,")
     print("tap Connect, pick K1-…, then Play. If Chrome refuses Bluetooth on a")
