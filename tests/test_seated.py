@@ -64,8 +64,8 @@ def check_shape(report: Report, story: list[dict]) -> list[str]:
     report.check("starts seated", paths[0] == SIT, paths[0])
     report.check("ends standing", paths[-1] == STAND, paths[-1])
     report.check("only the verified seated scripts are used",
-                 set(paths) <= LOOKS | {SIT, STAND},
-                 str(sorted(set(paths) - LOOKS - {SIT, STAND})))
+                 set(paths) <= LOOKS | {SIT, STAND, SHOW},
+                 str(sorted(set(paths) - LOOKS - {SIT, STAND, SHOW})))
 
     speaks = [i for i, s in enumerate(story) if "speak" in s]
     looks = [i for i, s in enumerate(story) if s.get("actionPath") in LOOKS]
@@ -87,7 +87,9 @@ def check_shape(report: Report, story: list[dict]) -> list[str]:
 def main() -> int:
     report = Report("seated story and renewal rule")
     clocks = {"SpeAction/sit": 7.625, "SpeAction/stand": 10.094,
-              "SpeAction/sit look left": 1.375, "SpeAction/sit look right": 1.375}
+              "SpeAction/sit look left": 1.375,
+              "SpeAction/sit look right": 1.375,
+              "SpeAction/sit show hand": 3.578}
 
     print("\n-- story_seated.json (alternating) --")
     story = steps(ROOT / "routines" / "story_seated.json")
@@ -98,6 +100,13 @@ def main() -> int:
                  " ".join(look_paths))
     span = seated_span(story, clocks)
     report.check(f"seated run under {MAX_SEATED_S} s", span <= MAX_SEATED_S, f"{span:.1f}s")
+    hand_at = [i for i, s in enumerate(story) if s.get("actionPath") == SHOW]
+    speaks_at = [i for i, s in enumerate(story) if "speak" in s]
+    report.check("the hand show is in the story once", len(hand_at) == 1,
+                 str(hand_at))
+    report.check("the hand show follows the kids' line, not the ending",
+                 len(speaks_at) == 9 and len(hand_at) == 1
+                 and speaks_at[7] < hand_at[0] < speaks_at[8])
 
     print("\n-- story_seated_onedir.json (single direction) --")
     one = steps(ROOT / "routines" / "story_seated_onedir.json")
@@ -132,9 +141,9 @@ def main() -> int:
                  and hand_paths[show_at + 1] in LOOKS, " ".join(hand_paths))
     report.check("no idle gap inside the short sequence",
                  not any("wait" in s for s in hand))
-    report.check("the untimed hand show gets a generous grace",
+    report.check("the hand show gets a generous grace",
                  any(s.get("actionPath") == SHOW
-                     and float(s.get("grace", 0)) >= 30 for s in hand))
+                     and float(s.get("grace", 0)) >= 18 for s in hand))
 
     print("\n-- story table (tools/story.py) --")
     sys.path.insert(0, str(ROOT / "tools"))

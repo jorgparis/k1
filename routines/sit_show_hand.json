@@ -1,6 +1,6 @@
 {
   "name": "sit-show-hand",
-  "description": "The wolf shows his hand while seated. SpeAction/sit show hand is derived from ProAction/Take a seat record 4 (the seated body) plus the right-arm gesture of SpeAction/say hello records 2-4 (rShoulder 100, rArm 15/5/15, rHand 70); only the right arm moves, every record re-sends the seated frame, and the head stays centred. Built by build/sit/build_show_hand.py. SAFETY: record 4 is a transient frame, not a rest pose, so this sequence must stay short and autoStand must stay on. The move has not been watched on hardware and its clock is unknown; do not put it in a timed story until it has been measured. Copy build/sit/final/*.sh to D:\\SpeAction first.",
+  "description": "The wolf shows his hand while seated. SpeAction/sit show hand is derived from ProAction/Take a seat record 4 (the seated body) plus the right-arm gesture of SpeAction/say hello records 2-4 (rShoulder 100, rArm 15/5/15, rHand 70); only the right arm moves, every record re-sends the seated frame, and the head stays centred. Built by build/sit/build_show_hand.py. Watched on hardware 2026-11-10: only the right arm moved and it read as the wolf showing his paw, progress-100 at 3578 ms. SAFETY: record 4 is a transient frame, not a rest pose, so keep the sequence short and autoStand on. Copy build/sit/final/*.sh to D:\\SpeAction first.",
   "steps": [
     { "actionPath": "SpeAction/sit", "grace": 30 },
     { "actionPath": "SpeAction/sit show hand", "grace": 30 },

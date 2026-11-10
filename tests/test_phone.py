@@ -194,9 +194,11 @@ def main() -> int:
                          for p in ("SpeAction/sit", "SpeAction/sit look left",
                                    "SpeAction/sit look right",
                                    "SpeAction/sit show hand")))
-        report.check("the untimed hand show is not given an invented clock",
-                     card["SpeAction/sit show hand"]["seconds"] is None
-                     and card["SpeAction/sit show hand"]["source"] == "unknown")
+        report.check("the watched hand show carries its measured clock",
+                     card["SpeAction/sit show hand"]["seconds"] is not None
+                     and card["SpeAction/sit show hand"]["source"] == "measured"
+                     and 3.0 < card["SpeAction/sit show hand"]["seconds"] < 5.0,
+                     str(card["SpeAction/sit show hand"]))
         report.check("the menu never shadows a spec path",
                      all(m["path"].lower() not in
                          {p.lower() for p in data["actions"].values()}

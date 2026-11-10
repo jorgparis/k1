@@ -1154,13 +1154,13 @@ longer matches a 4 s sit or an 8 s stand. Play them together with
 { "actionPath": "SpeAction/stand",          "grace": 30 }
 ```
 
-`routines/sit_show_hand.json` adds the wolf's hand-show beat: sit, play
+`routines/sit_show_hand.json` is the standalone hand-show beat: sit, play
 `SpeAction/sit show hand`, turn the head once, stand. The hand-show is the
 seated body with only the right arm changed to `say hello`'s gesture (shoulder
-100, arm 15→5→15, hand 70), so it renews the pose while it moves. It has **not
-been watched on hardware and has no measured clock** — the phone menu says
-`clock unknown`, and it is deliberately not part of the story until it has been
-timed.
+100, arm 15→5→15, hand 70), so it renews the pose while it moves. It was
+watched on hardware (right arm only, reads as the wolf showing his paw) and
+timed at **3578 ms**. The seated story now plays it after the kids'
+"Montre-nous ta patte !" line, and the Moves menu carries the measured clock.
 
 Verified on hardware: `routines/sit.json`'s four-step sequence sat, looked both
 ways **without standing**, and stood up at the end — the whole run is about

@@ -442,6 +442,7 @@ SEATED = [
     ("renew", "left"),
     ("say", "Montre-nous ta patte ! Elle est toute noire !", "kid"),
     ("renew", "right"),
+    ("actionPath", "SpeAction/sit show hand"),
     ("say", "Et les sept chevreaux ne lui ouvrirent pas. Fin.", "narrator"),
     ("renew", "left"),
     ("actionPath", "SpeAction/stand"),
@@ -625,16 +626,19 @@ STORIES = {
         "rate": 0,
         "cast": SEATED_CAST,
         # The split card files have no robot.json clock, so their durations are
-        # given here, in milliseconds like every other bench clock. sit and
-        # stand are the firmware clocks measured on hardware. The seated looks
-        # now carry the *standing* look's timing bytes (speed 40 / 20, emphasis
-        # 0), which clocked at 1375 ms; the old seated wording (speed 30,
-        # emphasis 40) took 9438 ms.
+        # given here, in milliseconds like every other bench clock. sit, stand
+        # and sit show hand are the firmware clocks measured on hardware. The
+        # seated looks now carry the *standing* look's timing bytes (speed 40 /
+        # 20, emphasis 0), which clocked at 1375 ms; the old seated wording
+        # (speed 30, emphasis 40) took 9438 ms.
         "clocks": {
             "SpeAction/sit": 7625,
             "SpeAction/stand": 10094,
             "SpeAction/sit look left": 1375,
             "SpeAction/sit look right": 1375,
+            # Measured 2026-11-10: progress-100 at 3578 ms, watched at the
+            # "Montre-nous ta patte !" beat before this was wired in.
+            "SpeAction/sit show hand": 3578,
         },
         "description": "Un conte assis : le robot s'assoit, raconte en trois "
                        "voix, tourne la tête vers son public entre chaque "
@@ -642,8 +646,8 @@ STORIES = {
                        "aussi ce qui maintient la pose : le record assis est "
                        "transitoire et retombe si on ne le redemande pas toutes "
                        "les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts "
-                       "sit / stand / sit look left / sit look right sur la "
-                       "carte. Ne pas désactiver autoStand.",
+                       "sit / stand / sit look left / sit look right / "
+                       "sit show hand sur la carte. Ne pas désactiver autoStand.",
     },
 }
 

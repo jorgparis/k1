@@ -52,7 +52,7 @@ BLURBS = {
     "grimm": "Un conte des frères Grimm à trois voix : le pêcheur, sa femme, et le poisson d'or.",
     "chat_botte": "Perrault à trois voix : un fils sans rien, un chat en bottes, et un ogre qui devient souris.",
     "bremen": "Quatre animaux trop vieux pour servir, une maison de voleurs, et un concert qui fait fuir tout le monde.",
-    "seated": "Le Loup et les Sept Chevreaux, joué assis : la chèvre, le loup et les chevreaux, et la tête qui suit chaque réplique.",
+    "seated": "Le Loup et les Sept Chevreaux, joué assis : la chèvre, le loup et les chevreaux, la tête qui suit chaque réplique, et la patte que le loup montre.",
 }
 
 # The moves menu: every spec action plus the scripts this card holds that
@@ -71,9 +71,10 @@ CARD_MOVES = [
     ("sit look left", "SpeAction/sit look left", 1.375, "yes", "renews the seated pose; leaves it seated"),
     ("sit look right", "SpeAction/sit look right", 1.375, "yes", "renews the seated pose; leaves it seated"),
     # Derived from the seated frame plus `say hello`'s right-arm gesture; the
-    # records hold the seat, so it is its own renewal. Nobody has timed it yet.
-    ("sit show hand", "SpeAction/sit show hand", None, None,
-     "not watched yet; leaves it seated"),
+    # records hold the seat, so it is its own renewal. Watched and timed
+    # 2026-11-10.
+    ("sit show hand", "SpeAction/sit show hand", 3.578, "yes",
+     "renews the seated pose; leaves it seated"),
     ("stand", "SpeAction/stand", 10.094, "yes", "assumes it is seated"),
     # The other unique SpeAction scripts: present on the card, invisible to
     # robot.json. The four arm raises were watched in the left/right pairs run.

@@ -1,6 +1,6 @@
 {
   "name": "story_seated_onedir",
-  "description": "Un conte assis : le robot s'assoit, raconte en trois voix, tourne la tête vers son public entre chaque réplique, puis se relève. Les mouvements de tête sont aussi ce qui maintient la pose : le record assis est transitoire et retombe si on ne le redemande pas toutes les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts sit / stand / sit look left / sit look right sur la carte. Ne pas désactiver autoStand. Variante unidirectionnelle : tous les regards vont à gauche ; la tête revient au centre avant chaque nouveau regard.",
+  "description": "Un conte assis : le robot s'assoit, raconte en trois voix, tourne la tête vers son public entre chaque réplique, puis se relève. Les mouvements de tête sont aussi ce qui maintient la pose : le record assis est transitoire et retombe si on ne le redemande pas toutes les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts sit / stand / sit look left / sit look right / sit show hand sur la carte. Ne pas désactiver autoStand. Variante unidirectionnelle : tous les regards vont à gauche ; la tête revient au centre avant chaque nouveau regard.",
   "steps": [
     {
       "actionPath": "SpeAction/sit",
@@ -87,6 +87,10 @@
       "grace": 16.4
     },
     {
+      "actionPath": "SpeAction/sit show hand",
+      "grace": 18.6
+    },
+    {
       "speak": "02/909"
     },
     {
@@ -95,6 +99,9 @@
     {
       "actionPath": "SpeAction/sit look left",
       "grace": 16.4
+    },
+    {
+      "wait": 2.03
     },
     {
       "actionPath": "SpeAction/stand",
