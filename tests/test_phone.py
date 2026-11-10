@@ -183,7 +183,8 @@ def main() -> int:
                      str(sorted({m["group"] for m in moves})))
         card = {m["path"]: m for m in moves if m["group"] == "Card"}
         wanted = {"SpeAction/sit", "SpeAction/stand", "SpeAction/sit look left",
-                  "SpeAction/sit look right", "SpeAction/look left",
+                  "SpeAction/sit look right", "SpeAction/sit show hand",
+                  "SpeAction/look left",
                   "SpeAction/look right", "SpeAction/wave left",
                   "SpeAction/wave right", "SpeAction/shake head"}
         report.check("the card-only moves are in the menu", wanted <= set(card),
@@ -191,7 +192,11 @@ def main() -> int:
         report.check("the seated moves warn that they leave it seated",
                      all("seated" in card[p].get("note", "")
                          for p in ("SpeAction/sit", "SpeAction/sit look left",
-                                   "SpeAction/sit look right")))
+                                   "SpeAction/sit look right",
+                                   "SpeAction/sit show hand")))
+        report.check("the untimed hand show is not given an invented clock",
+                     card["SpeAction/sit show hand"]["seconds"] is None
+                     and card["SpeAction/sit show hand"]["source"] == "unknown")
         report.check("the menu never shadows a spec path",
                      all(m["path"].lower() not in
                          {p.lower() for p in data["actions"].values()}

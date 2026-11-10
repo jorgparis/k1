@@ -187,7 +187,9 @@ yourself: `routines/look.json` plays `SpeAction/look left` and
 `SpeAction/look right` (two silent moves derived from `shake head`),
 `routines/wave.json` plays `SpeAction/wave left` and `SpeAction/wave right`
 (two one-hand waves derived from `Wave Hands`), and `routines/sit.json` uses
-the split `sit` / `stand` actions plus two seated looks (below).
+the split `sit` / `stand` actions plus two seated looks (below);
+`routines/sit_show_hand.json` adds the seated hand-show built from both the
+seated frame and `say hello`'s right-arm gesture.
 `glide` eases to a pose
 in steps of at most `maxStep` counts instead of one 17-joint jump, and `fast`
 drops the inter-frame delay for dry runs.
@@ -348,13 +350,14 @@ wake-lock, a diagnostics log of every frame, and a **Rehearse** mode that walks
 the timeline with no robot at all.
 
 Below the stories the same page has a **Moves** menu: all 68 `robot.json`
-actions plus the 21 card-only and custom scripts, filterable by group and
+actions plus the 22 card-only and custom scripts, filterable by group and
 searchable by name. Tapping one plays that action alone under the same wire
 rules, and the 6 s settle is enforced between menu moves too. Each entry shows
 the clock measured on hardware where one exists; scripts nobody has timed say
 `clock unknown` rather than borrowing a number. Moves that leave the robot
-seated (`sit`, `sit look left/right`, `stand`) are flagged, because record 4 is
-a transient pose and needs a renewal or the matching `stand`.
+seated (`sit`, `sit look left/right`, `sit show hand`, `stand`) are flagged,
+because record 4 is a transient pose and needs a renewal or the matching
+`stand`.
 
 To run it: copy `k1-story.html` to the phone (USB/MTP, email, Drive — anything),
 open it in **Chrome on Android**, close the **K One** app, tap **Connect**, pick
@@ -377,7 +380,7 @@ so a stack that refuses long writes without a response may need the **Force
 write-with-response** checkbox (the GATT layer then fragments the same frame at
 the MTU); and a stale Chrome tab or a background tab can throttle timers, which
 is why the page holds a wake lock and warns when it loses focus. This path has
-not been performed on hardware yet — the offline proof is 119 checks in
+not been performed on hardware yet — the offline proof is 120 checks in
 `tests/test_phone.py` plus 24 in `tools/phone/check_player.js`, including a fake
 robot that streams progress, drops an unprovoked 100, and rejects a no-response
 write to force the fallback. The Moves menu is covered too: every spec path and
@@ -1137,8 +1140,9 @@ not stand the robot up first:
 | `SpeAction/stand.sh` | Take A Seat 4–10 | 7 | neutral, standing |
 | `SpeAction/sit look left.sh` | record 4 body + head 0→20, byte 3 `80` | 2 | seated, head turned |
 | `SpeAction/sit look right.sh` | record 4 body + head 0→20, byte 3 `00` | 2 | seated, head turned |
+| `SpeAction/sit show hand.sh` | record 4 body + `say hello` 2–4 right arm | 5 | seated, right hand raised |
 
-The split is exact factory records — no new joint values. All four carry the
+The split is exact factory records — no new joint values. All five carry the
 silent first-record id `0x53`, because the original 13 s `Take A Seat` clip no
 longer matches a 4 s sit or an 8 s stand. Play them together with
 `routines/sit.json`:
@@ -1150,10 +1154,18 @@ longer matches a 4 s sit or an 8 s stand. Play them together with
 { "actionPath": "SpeAction/stand",          "grace": 30 }
 ```
 
-Verified on hardware: the four-step sequence sat, looked both ways **without
-standing**, and stood up at the end — the whole run is about 10 s. That short
-window is the entire safe envelope. Record 4 is a frame the factory motion
-passes through, not a pose that holds itself up:
+`routines/sit_show_hand.json` adds the wolf's hand-show beat: sit, play
+`SpeAction/sit show hand`, turn the head once, stand. The hand-show is the
+seated body with only the right arm changed to `say hello`'s gesture (shoulder
+100, arm 15→5→15, hand 70), so it renews the pose while it moves. It has **not
+been watched on hardware and has no measured clock** — the phone menu says
+`clock unknown`, and it is deliberately not part of the story until it has been
+timed.
+
+Verified on hardware: `routines/sit.json`'s four-step sequence sat, looked both
+ways **without standing**, and stood up at the end — the whole run is about
+10 s. That short window is the entire safe envelope. Record 4 is a frame the
+factory motion passes through, not a pose that holds itself up:
 
 - **It is not a rest pose.** Held at record 4, the robot drifts backward. With
   `autoStand` on (the default) posture management rights it; with `autoStand`

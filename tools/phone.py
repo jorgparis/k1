@@ -70,6 +70,10 @@ CARD_MOVES = [
     ("sit", "SpeAction/sit", 7.625, "yes", "leaves it seated; the pose is transient"),
     ("sit look left", "SpeAction/sit look left", 1.375, "yes", "renews the seated pose; leaves it seated"),
     ("sit look right", "SpeAction/sit look right", 1.375, "yes", "renews the seated pose; leaves it seated"),
+    # Derived from the seated frame plus `say hello`'s right-arm gesture; the
+    # records hold the seat, so it is its own renewal. Nobody has timed it yet.
+    ("sit show hand", "SpeAction/sit show hand", None, None,
+     "not watched yet; leaves it seated"),
     ("stand", "SpeAction/stand", 10.094, "yes", "assumes it is seated"),
     # The other unique SpeAction scripts: present on the card, invisible to
     # robot.json. The four arm raises were watched in the left/right pairs run.

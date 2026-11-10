@@ -26,6 +26,7 @@ from harness import ROOT, Report  # noqa: E402
 
 LOOKS = {"SpeAction/sit look left", "SpeAction/sit look right"}
 SIT = "SpeAction/sit"
+SHOW = "SpeAction/sit show hand"
 STAND = "SpeAction/stand"
 MAX_GAP_S = 5.0     # the tested wait between renewals (55 s hold, 5 s waits)
 MAX_SEATED_S = 60.0
@@ -114,6 +115,26 @@ def main() -> int:
                  not any("wait" in s for s in short))
     report.check("look shows both directions",
                  LOOKS <= set(short_paths), str(sorted(set(short_paths))))
+
+    print("\n-- routines/sit_show_hand.json --")
+    hand = steps(ROOT / "routines" / "sit_show_hand.json")
+    hand_paths = [s["actionPath"] for s in hand if "actionPath" in s]
+    report.check("starts seated", hand_paths[0] == SIT, hand_paths[0])
+    report.check("ends standing", hand_paths[-1] == STAND, hand_paths[-1])
+    report.check("the hand show is the first beat after sitting",
+                 len(hand_paths) > 1 and hand_paths[1] == SHOW, " ".join(hand_paths))
+    report.check("only seated moves are played while seated",
+                 set(hand_paths[1:-1]) <= LOOKS | {SHOW},
+                 str(sorted(set(hand_paths[1:-1]) - LOOKS - {SHOW})))
+    show_at = hand_paths.index(SHOW)
+    report.check("a renewal look follows the hand show",
+                 show_at + 1 < len(hand_paths) - 1
+                 and hand_paths[show_at + 1] in LOOKS, " ".join(hand_paths))
+    report.check("no idle gap inside the short sequence",
+                 not any("wait" in s for s in hand))
+    report.check("the untimed hand show gets a generous grace",
+                 any(s.get("actionPath") == SHOW
+                     and float(s.get("grace", 0)) >= 30 for s in hand))
 
     print("\n-- story table (tools/story.py) --")
     sys.path.insert(0, str(ROOT / "tools"))
