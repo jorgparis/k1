@@ -417,8 +417,11 @@ SEATED_CAST = {
     # After swallowing the chalk the wolf tries to sound soft. Keep the voice,
     # rate and filter identical and change only the pitch, so the difference
     # reads as the chalk working rather than as a second character speaking.
+    # OneCore's pitch control plateaus near 146.8 Hz at +50%, so +50% is the
+    # whole available lift; +10% was only ~3 semitones and the owner could not
+    # hear it next to the -20% line.
     "wolf_soft": {"engine": "onecore", "voice": "Microsoft Paul",
-                  "rate": -10, "pitch": "+10%", "label": "LE LOUP",
+                  "rate": -10, "pitch": "+50%", "label": "LE LOUP",
                   "fx": {"lowpass": 1800, "echo": 0.08}},
     "kid": {"engine": "onecore", "voice": "Microsoft Julie",
             "rate": 6, "pitch": "+14%", "label": "LE CHEVREAU"},
