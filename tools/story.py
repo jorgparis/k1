@@ -414,6 +414,12 @@ SEATED_CAST = {
     "wolf": {"engine": "onecore", "voice": "Microsoft Paul",
              "rate": -10, "pitch": "-20%", "label": "LE LOUP",
              "fx": {"lowpass": 1800, "echo": 0.08}},
+    # After swallowing the chalk the wolf tries to sound soft. Keep the voice,
+    # rate and filter identical and change only the pitch, so the difference
+    # reads as the chalk working rather than as a second character speaking.
+    "wolf_soft": {"engine": "onecore", "voice": "Microsoft Paul",
+                  "rate": -10, "pitch": "+10%", "label": "LE LOUP",
+                  "fx": {"lowpass": 1800, "echo": 0.08}},
     "kid": {"engine": "onecore", "voice": "Microsoft Julie",
             "rate": 6, "pitch": "+14%", "label": "LE CHEVREAU"},
 }
@@ -432,7 +438,7 @@ SEATED = [
     ("renew", "left"),
     ("say", "Le loup avala de la craie pour adoucir sa voix.", "narrator"),
     ("renew", "right"),
-    ("say", "Petits, petits, ouvrez-moi. C'est votre mère.", "wolf"),
+    ("say", "Petits, petits, ouvrez-moi. C'est votre mère.", "wolf_soft"),
     ("renew", "left"),
     ("say", "Montre-nous ta patte ! Elle est toute noire !", "kid"),
     ("renew", "right"),
