@@ -32,10 +32,13 @@ from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 ROOT = Path(__file__).resolve().parent.parent
+TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(ROOT / ".audio-libs"))
 
 from k1lib import spec  # noqa: E402
+import pitch_shifter  # noqa: E402
 
 BUILD = ROOT / "build" / "story"
 WORK = BUILD / "_work"           # intermediates: SAPI wavs, the ps1, the mix
@@ -417,11 +420,14 @@ SEATED_CAST = {
     # After swallowing the chalk the wolf tries to sound soft. Keep the voice,
     # rate and filter identical and change only the pitch, so the difference
     # reads as the chalk working rather than as a second character speaking.
-    # OneCore's pitch control plateaus near 146.8 Hz at +50%, so +50% is the
-    # whole available lift; +10% was only ~3 semitones and the owner could not
-    # hear it next to the -20% line.
+    # OneCore's pitch control plateaus near 146.8 Hz at +50% (+10% was only ~3
+    # semitones and inaudible next to the -20% line), so +50% is the whole
+    # engine-side lift and `shift` does the rest in post: x1.75 takes the same
+    # take to ~255 Hz without changing its 3.77 s length. Chosen by ear from
+    # build/story/seated/wolf_audition2.mp3, 2026-11-10.
     "wolf_soft": {"engine": "onecore", "voice": "Microsoft Paul",
-                  "rate": -10, "pitch": "+50%", "label": "LE LOUP",
+                  "rate": -10, "pitch": "+50%", "shift": 1.75,
+                  "label": "LE LOUP",
                   "fx": {"lowpass": 1800, "echo": 0.08}},
     "kid": {"engine": "onecore", "voice": "Microsoft Julie",
             "rate": 6, "pitch": "+14%", "label": "LE CHEVREAU"},
@@ -1432,6 +1438,12 @@ def main() -> int:
             else:
                 say(payload, sample_path, cast["voice"], int(cast.get("rate", 0)))
             samples = normalize(trim(read_wav(sample_path)))
+            if cast.get("shift"):
+                # Post-process pitch lift, applied before the filter so the
+                # treated voice is the one the listener hears: the engine
+                # clamping +50% is not the ceiling of the character.
+                samples = normalize(pitch_shifter.pitch_shift(
+                    samples, float(cast["shift"]), RATE_HZ))
             if cast.get("fx"):
                 samples = normalize(apply_fx(samples, cast["fx"]))
             speaker = cast.get("label", "")

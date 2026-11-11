@@ -68,9 +68,10 @@ Consequences worth having:
 | `k1ctl.py` | CLI |
 | `tools/probe.py` | passive first-contact probe: connect, enumerate, ask state, never move |
 | `tools/story.py` | build the story tables (First Boot, Derelict, Grimm, Le Chat Botté, Les Musiciens de Brême): speech, SFX, routine, preview |
+| `tools/pitch_shifter.py` | resample + WSOLA pitch shift, for voices the engine will not lift any further |
 | `tools/phone.py` | build the standalone phone player from the same routines |
 | `routines/*.json` | routine files |
-| `tests/` | ten suites, none of which need hardware |
+| `tests/` | twelve suites, none of which need hardware |
 
 ## Setup (Windows, one time)
 
@@ -217,6 +218,9 @@ py tools/story.py --story chat_botte --copy D:\   # copies 701-734 to D:\02
 
 py tools/story.py --story bremen      # Les Musiciens de Brême, four animals
 py tools/story.py --story bremen --copy D:\       # copies 801-838 to D:\02
+
+py tools/story.py --story seated      # Le Loup et les Sept Chevreaux, seated
+py tools/story.py --story seated --copy D:\       # copies 901-909 + looks to D:\02
 ```
 
 ```powershell
@@ -226,6 +230,7 @@ python k1ctl.py --sim routine routines/story_derelict_fr.json
 python k1ctl.py --sim routine routines/story_grimm.json
 python k1ctl.py --sim routine routines/story_chat_botte.json
 python k1ctl.py --sim routine routines/story_bremen.json
+python k1ctl.py --sim routine routines/story_seated.json
 ```
 
 Each story owns a disjoint clip-id range and its own output directory — First
@@ -234,7 +239,8 @@ Boot is `301+` in `build/story/`, Derelict is `401+` in
 `build/story/derelict_fr/`, the Grimm tale is `601+` in
 `build/story/grimm/`, *Le Chat Botté* is `701+` in
 `build/story/chat_botte/`, and *Les Musiciens de Brême* is `801+` in
-`build/story/bremen/` — because the card's `02/` folder is flat. Building
+`build/story/bremen/` (the seated tale is `901+` in `build/story/seated/`) —
+because the card's `02/` folder is flat. Building
 one therefore cannot overwrite the clips another routine names; a test asserts
 the ranges never intersect. Derelict uses only stunts the owner watched perform,
 and `Play Dead` again supplies the "death" because it is the one factory action
@@ -278,6 +284,18 @@ dropped (rate -12, pitch -20, 1.8 kHz low-pass), the dog is Paul near normal
 pair plus a rooster crow. All 11 stunts are confirmed `yes`, all end standing, no
 walking.
 
+`--story seated` is *Le Loup et les Sept Chevreaux* **seated**: 64.8 s, clips
+`901–909`, four voices (Hortense narrates, Hortense lowered is the mother, Paul
+slowed and filtered is the wolf, Julie is the kid) and 12 stunts, nine of which
+are seated head turns. Those turns are not decoration — the seated frame is
+transient, so a look is re-sent after every line to renew it (see the seated
+section below). After the kids' "Montre-nous ta patte !" the wolf plays the
+hand-show and only the right arm moves. The wolf's second answer is the same
+Paul take lifted to **255 Hz** by `tools/pitch_shifter.py`, because the engine's
+own pitch control stops at 146.8 Hz. This story needs the five card scripts
+(`sit`, `stand`, `sit look left/right`, `sit show hand`) as well as the MP3s,
+and `autoStand` must stay on for the whole run.
+
 A story beat may be `action` (a `robot.json` name) or `actionPath` (a raw card
 path, for scripts the spec does not name). Both go through the same 6 s settle
 rule and the same measured clocks: the build reads `build/bench/all68.json` for
@@ -290,6 +308,16 @@ Three of those voices (Hortense, Julie, Paul) are **OneCore/WinRT voices**;
 Julie or Paul at all. The generator reaches them through
 `Windows.Media.SpeechSynthesis` and SSML, which is also what supplies the pitch,
 and resamples their 16 kHz output to the project's 44.1 kHz.
+
+That pitch control has a ceiling worth knowing about: for Paul it stops rising
+near **146.8 Hz**, and every SSML form tried (`+50%`, `+100%`, `+12st`,
+`200Hz`, `300Hz`) measures the same. When a character needs more than the engine
+will give, `tools/pitch_shifter.py` lifts it after synthesis instead — resample
+to raise the pitch, then WSOLA-time-stretch back to the original length, so the
+speed and duration are unchanged and only the pitch moves. It is pure stdlib
+(no numpy, no sox) and costs about 0.2 s per second of audio. The seated tale's
+post-chalk wolf uses it at `x1.75` (105 Hz → 255 Hz); see `tests/test_pitch.py`
+for the accuracy and artefact checks.
 
 It uses the installed Windows voices for speech (no cloud, no API key),
 synthesises its
@@ -1177,9 +1205,10 @@ factory motion passes through, not a pose that holds itself up:
 - **Never disable `autoStand` for seated work.** It is the only thing that
   rescues the pose. Note `--no-auto-stand` on the CLI only skips the enable
   frame; it does not send an off frame.
-- **Keep the steps close together**, and do not put a long `speak` beat between
-  them. The seated beat has to fit between `sit` and `stand`; a seated
-  narration is not viable.
+- **Keep the steps close together**, and never leave a long `speak` or `wait`
+  between renewals. A seated line is fine as long as a look (or the hand show,
+  which also re-sends the body) follows it: that is how the 64.8 s seated story
+  stays seated, with a renewal every ~5 s.
 - `stand` and both seated looks start from the seated frame. Played while the
   robot is standing, they make it sit first.
 - If the sequence is interrupted while seated, the robot is left in a collapsing

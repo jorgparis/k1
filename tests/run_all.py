@@ -16,6 +16,7 @@ SUITES = [
     ("declared duration table", ["test_durations.py"]),
     ("action duration benchmark", ["test_bench.py"]),
     ("seated story and renewal rule", ["test_seated.py"]),
+    ("post-chalk pitch shifter", ["test_pitch.py"]),
     ("phone player (Web Bluetooth page)", ["test_phone.py"]),
 ]
 
