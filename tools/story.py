@@ -449,9 +449,12 @@ SEATED = [
     ("renew", "right"),
     ("say", "Petits, petits, ouvrez-moi. C'est votre mère.", "wolf_soft"),
     ("renew", "left"),
-    ("say", "Montre-nous ta patte ! Elle est toute noire !", "kid"),
-    ("renew", "right"),
+    # The ask and the reaction are separate lines: the wolf has to show the paw
+    # *between* them, otherwise the kids call it black before they have seen it.
+    ("say", "Montre-nous ta patte !", "kid"),
     ("actionPath", "SpeAction/sit show hand"),
+    ("say", "Elle est toute noire !", "kid"),
+    ("renew", "right"),
     ("say", "Et les sept chevreaux ne lui ouvrirent pas. Fin.", "narrator"),
     ("renew", "left"),
     ("actionPath", "SpeAction/stand"),

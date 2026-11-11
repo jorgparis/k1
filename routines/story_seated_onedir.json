@@ -80,11 +80,7 @@
       "speak": "02/908"
     },
     {
-      "wait": 2.85
-    },
-    {
-      "actionPath": "SpeAction/sit look left",
-      "grace": 16.4
+      "wait": 1.33
     },
     {
       "actionPath": "SpeAction/sit show hand",
@@ -94,14 +90,21 @@
       "speak": "02/909"
     },
     {
-      "wait": 2.6
+      "wait": 1.24
     },
     {
       "actionPath": "SpeAction/sit look left",
       "grace": 16.4
     },
     {
-      "wait": 2.03
+      "speak": "02/910"
+    },
+    {
+      "wait": 2.6
+    },
+    {
+      "actionPath": "SpeAction/sit look left",
+      "grace": 16.4
     },
     {
       "actionPath": "SpeAction/stand",

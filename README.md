@@ -220,7 +220,7 @@ py tools/story.py --story bremen      # Les Musiciens de Brême, four animals
 py tools/story.py --story bremen --copy D:\       # copies 801-838 to D:\02
 
 py tools/story.py --story seated      # Le Loup et les Sept Chevreaux, seated
-py tools/story.py --story seated --copy D:\       # copies 901-909 + looks to D:\02
+py tools/story.py --story seated --copy D:\       # copies 901-910 + looks to D:\02
 ```
 
 ```powershell
@@ -284,13 +284,14 @@ dropped (rate -12, pitch -20, 1.8 kHz low-pass), the dog is Paul near normal
 pair plus a rooster crow. All 11 stunts are confirmed `yes`, all end standing, no
 walking.
 
-`--story seated` is *Le Loup et les Sept Chevreaux* **seated**: 64.8 s, clips
-`901–909`, four voices (Hortense narrates, Hortense lowered is the mother, Paul
+`--story seated` is *Le Loup et les Sept Chevreaux* **seated**: 62.5 s, clips
+`901–910`, four voices (Hortense narrates, Hortense lowered is the mother, Paul
 slowed and filtered is the wolf, Julie is the kid) and 12 stunts, nine of which
 are seated head turns. Those turns are not decoration — the seated frame is
 transient, so a look is re-sent after every line to renew it (see the seated
-section below). After the kids' "Montre-nous ta patte !" the wolf plays the
-hand-show and only the right arm moves. The wolf's second answer is the same
+section below). The kids ask "Montre-nous ta patte !", the wolf plays the hand-show
+(only the right arm moves), and only then do they react "Elle est toute
+noire !" — the ask, the gesture and the reaction are three separate beats. The wolf's second answer is the same
 Paul take lifted to **255 Hz** by `tools/pitch_shifter.py`, because the engine's
 own pitch control stops at 146.8 Hz. This story needs the five card scripts
 (`sit`, `stand`, `sit look left/right`, `sit show hand`) as well as the MP3s,
@@ -1187,8 +1188,9 @@ longer matches a 4 s sit or an 8 s stand. Play them together with
 seated body with only the right arm changed to `say hello`'s gesture (shoulder
 100, arm 15→5→15, hand 70), so it renews the pose while it moves. It was
 watched on hardware (right arm only, reads as the wolf showing his paw) and
-timed at **3578 ms**. The seated story now plays it after the kids'
-"Montre-nous ta patte !" line, and the Moves menu carries the measured clock.
+timed at **3578 ms**. The seated story plays it between the kids' ask
+"Montre-nous ta patte !" and their reaction "Elle est toute noire !", and the
+Moves menu carries the measured clock.
 
 Verified on hardware: `routines/sit.json`'s four-step sequence sat, looked both
 ways **without standing**, and stood up at the end — the whole run is about
@@ -1207,7 +1209,7 @@ factory motion passes through, not a pose that holds itself up:
   frame; it does not send an off frame.
 - **Keep the steps close together**, and never leave a long `speak` or `wait`
   between renewals. A seated line is fine as long as a look (or the hand show,
-  which also re-sends the body) follows it: that is how the 64.8 s seated story
+  which also re-sends the body) follows it: that is how the 62.5 s seated story
   stays seated, with a renewal every ~5 s.
 - `stand` and both seated looks start from the seated frame. Played while the
   robot is standing, they make it sit first.

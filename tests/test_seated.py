@@ -69,14 +69,22 @@ def check_shape(report: Report, story: list[dict]) -> list[str]:
 
     speaks = [i for i, s in enumerate(story) if "speak" in s]
     looks = [i for i, s in enumerate(story) if s.get("actionPath") in LOOKS]
-    report.check("every line gets a head turn", len(speaks) == len(looks),
+    renews = [i for i, s in enumerate(story)
+              if s.get("actionPath") in LOOKS or s.get("actionPath") == SHOW]
+    report.check("every line is followed by a renewal before the next line",
+                 all(any(s < r < (speaks[i + 1] if i + 1 < len(speaks) else len(story))
+                         for r in renews)
+                     for i, s in enumerate(speaks)),
+                 f"{len(speaks)} lines, {len(renews)} renewals")
+    skipped = [i for i, s in enumerate(speaks)
+               if not any(s < look < (speaks[i + 1] if i + 1 < len(speaks) else len(story))
+                          for look in looks)]
+    first_action_after = (next((x for x in story[speaks[skipped[0]]:] if "actionPath" in x), {})
+                          if skipped else {})
+    report.check("only the hand-show cue skips the head turn",
+                 len(skipped) == 1
+                 and first_action_after.get("actionPath") == SHOW,
                  f"{len(speaks)} lines, {len(looks)} looks")
-    interleaved = all(
-        any(s < look < (speaks[i + 1] if i + 1 < len(speaks) else len(story))
-            for look in looks)
-        for i, s in enumerate(speaks)
-    )
-    report.check("a look follows every line before the next one", interleaved)
 
     longest_wait = max((float(s["wait"]) for s in story if "wait" in s), default=0.0)
     report.check(f"no silence longer than {MAX_GAP_S} s", longest_wait <= MAX_GAP_S,
@@ -104,8 +112,8 @@ def main() -> int:
     speaks_at = [i for i, s in enumerate(story) if "speak" in s]
     report.check("the hand show is in the story once", len(hand_at) == 1,
                  str(hand_at))
-    report.check("the hand show follows the kids' line, not the ending",
-                 len(speaks_at) == 9 and len(hand_at) == 1
+    report.check("the hand show sits between the kids' ask and their reaction",
+                 len(speaks_at) == 10 and len(hand_at) == 1
                  and speaks_at[7] < hand_at[0] < speaks_at[8])
 
     print("\n-- story_seated_onedir.json (single direction) --")
@@ -155,8 +163,11 @@ def main() -> int:
                  kinds[0] == "actionPath" and table[0][1] == SIT
                  and kinds[-1] == "actionPath" and table[-1][1] == STAND)
     say_at = [i for i, k in enumerate(kinds) if k == "say"]
-    report.check("every say is followed by a renew",
-                 all(i + 1 < len(kinds) and kinds[i + 1] == "renew" for i in say_at))
+    report.check("every say is followed by a renew or the hand show",
+                 all(i + 1 < len(kinds)
+                     and (kinds[i + 1] == "renew"
+                          or (kinds[i + 1] == "actionPath" and table[i + 1][1] == SHOW))
+                     for i in say_at))
     renew_sides = [table[i][1] for i in range(len(kinds) - 1) if kinds[i] == "renew"]
     report.check("renews alternate left/right",
                  all(a != b for a, b in zip(renew_sides, renew_sides[1:])),
