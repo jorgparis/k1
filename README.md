@@ -11,6 +11,18 @@ so they cannot drift out of sync.
 Source: **https://github.com/jorgparis/k1** (MIT). The public copy is sanitised
 (robot serial, MAC and personal paths removed); `build/` stays out of git.
 
+## Videos
+
+The robot performing the stories it was built to tell:
+
+| story | video |
+| --- | --- |
+| Derelict (dans l'espace) | [youtu.be/RQMDjljxaaQ](https://youtu.be/RQMDjljxaaQ) |
+| Les Musiciens de Brême | [youtu.be/6QYv2eiBXw0](https://youtu.be/6QYv2eiBXw0) |
+| Le Chat Botté | [youtu.be/lvQt1vo9rB0](https://youtu.be/lvQt1vo9rB0) |
+| Le Pêcheur et sa Femme | [youtu.be/1oO8OMTlwc4](https://youtu.be/1oO8OMTlwc4) |
+| Le Loup et les Sept Chevreaux (assis) | [youtube.com/shorts/RS12QV9owrY](https://youtube.com/shorts/RS12QV9owrY) |
+
 ## Architecture
 
 The shape borrowed from [Microduck](https://github.com/pollen-robotics/microduck):
