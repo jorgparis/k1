@@ -501,6 +501,80 @@ CORBEAU = [
     ("say", "Fin.", "narrator"),
 ]
 
+# Three pigs on a voice ladder, measured after the post-shift: Julie at ~244 Hz
+# for the youngest, Paul lifted to ~183 Hz for the middle brother, Hortense
+# lowered to ~153 Hz for the sensible one. The wolf is Paul dropped and filtered
+# to ~106 Hz, so he never sounds like the middle pig.
+# (OneCore's pitch control saturates around its base, so the shifts do the work.)
+COCHONS_CAST = {
+    "narrator": {"engine": "onecore", "voice": "Microsoft Hortense",
+                 "rate": 0, "pitch": "0%", "label": ""},
+    "pig1": {"engine": "onecore", "voice": "Microsoft Julie",
+             "rate": 10, "pitch": "+22%", "shift": 1.12,
+             "label": "LE PREMIER COCHON"},
+    "pig2": {"engine": "onecore", "voice": "Microsoft Paul",
+             "rate": 4, "pitch": "+6%", "shift": 1.55,
+             "label": "LE DEUXIÈME COCHON"},
+    "pig3": {"engine": "onecore", "voice": "Microsoft Hortense",
+             "rate": -4, "pitch": "-10%", "shift": 0.80,
+             "label": "LE TROISIÈME COCHON"},
+    "wolf": {"engine": "onecore", "voice": "Microsoft Paul",
+             "rate": -10, "pitch": "-20%", "label": "LE LOUP",
+             "fx": {"lowpass": 1600, "echo": 0.08}},
+}
+
+COCHONS = [
+    ("say", "Il était une fois trois petits cochons qui quittaient leur mère "
+            "pour bâtir leur maison.", "narrator"),
+    ("say", "Moi, je bâtis une maison de paille ! Ce sera fait avant ce soir.",
+     "pig1"),
+    ("action", "Say Hello"),
+    ("say", "En un matin, la maison de paille fut debout.", "narrator"),
+    ("say", "Moi, je bâtis une maison de bois. C'est plus solide que la paille.",
+     "pig2"),
+    ("action", "Wave Hands"),
+    ("say", "La maison de bois fut debout avant la nuit.", "narrator"),
+    ("say", "Moi, je bâtis une maison de briques. Le loup ne la renversera pas.",
+     "pig3"),
+    ("action", "Bow, Please"),
+    ("say", "Il travailla trois jours, et la maison fut solide.", "narrator"),
+    ("say", "Les deux aînés se moquèrent du plus jeune et allèrent jouer.",
+     "narrator"),
+    ("action", "Play Cool"),
+    ("say", "Mais un grand méchant loup rôdait.", "narrator"),
+
+    ("say", "Toc, toc, toc. Petit cochon, laisse-moi entrer !", "wolf"),
+    ("say", "Non, non, non ! Pas par les poils de mon menton !", "pig1"),
+    ("say", "Alors je vais souffler, et souffler, et faire envoler ta maison !",
+     "wolf"),
+    ("sfx", "boing"),
+    ("say", "La maison de paille s'envola. Le premier cochon courut chez son "
+            "frère.", "narrator"),
+
+    ("say", "Entre vite ! Ma maison de bois tiendra.", "pig2"),
+    ("say", "Toc, toc, toc. Petit cochon, laisse-moi entrer !", "wolf"),
+    ("say", "Non, non, non ! Pas par les poils de mon menton !", "pig2"),
+    ("say", "Alors je vais souffler, et souffler, et faire envoler ta maison !",
+     "wolf"),
+    ("sfx", "thud"),
+    ("say", "La maison de bois craqua et tomba. Les deux cochons coururent chez "
+            "le troisième.", "narrator"),
+
+    ("say", "Entrez vite ! Mes murs sont de brique.", "pig3"),
+    ("say", "Toc, toc, toc. Petit cochon, laisse-moi entrer !", "wolf"),
+    ("say", "Non, non, non ! Pas par les poils de mon menton !", "pig3"),
+    ("say", "Alors je vais souffler, et souffler, et souffler !", "wolf"),
+    ("action", "Crazy"),
+    ("say", "Le loup souffla, souffla, souffla. La maison de briques ne bougea "
+            "pas.", "narrator"),
+    ("say", "Je... renonce.", "wolf"),
+    ("say", "Et les trois petits cochons chantèrent : plus de loup, plus de "
+            "peur !", "narrator"),
+    ("action", "Celebrate"),
+    ("action", "Bow, Please"),
+    ("say", "Fin.", "narrator"),
+]
+
 BREMEN = [
     ("sfx", "sparkle"),
     ("say", "Il était une fois un âne qui portait les sacs de son maître depuis "
@@ -716,6 +790,21 @@ STORIES = {
                        "corbeau (Paul ralenti et filtré) et le renard (Julie). "
                        "Nécessite ses 02/*.mp3 (950+) sur la carte, sinon la "
                        "narration est muette et seules les cascades jouent.",
+    },
+    "cochons": {
+        "title": "Les Trois Petits Cochons",
+        "language": "FR",
+        "table": COCHONS,
+        "first_id": 962,
+        "build": ROOT / "build" / "story" / "cochons",
+        "routine": ROOT / "routines" / "story_cochons.json",
+        "voice": "Microsoft Hortense",
+        "rate": 0,
+        "cast": COCHONS_CAST,
+        "description": "Le conte des trois petits cochons à cinq voix : les "
+                       "trois frères, le narrateur et le loup. Nécessite ses "
+                       "02/*.mp3 (962+) sur la carte, sinon la narration est "
+                       "muette et seules les cascades jouent.",
     },
 }
 

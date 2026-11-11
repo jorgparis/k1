@@ -79,7 +79,7 @@ Consequences worth having:
 | `k1lib/bench.py` | play every action and measure its real duration |
 | `k1ctl.py` | CLI |
 | `tools/probe.py` | passive first-contact probe: connect, enumerate, ask state, never move |
-| `tools/story.py` | build the story tables (First Boot, Derelict, Grimm, Le Chat Botté, Les Musiciens de Brême, Le Corbeau et le Renard, the seated wolf): speech, SFX, routine, preview |
+| `tools/story.py` | build the story tables (First Boot, Derelict, Grimm, Le Chat Botté, Les Musiciens de Brême, Le Corbeau et le Renard, Les Trois Petits Cochons, the seated wolf): speech, SFX, routine, preview |
 | `tools/pitch_shifter.py` | resample + WSOLA pitch shift, for voices the engine will not lift any further |
 | `tools/phone.py` | build the standalone phone player from the same routines |
 | `routines/*.json` | routine files |
@@ -236,6 +236,9 @@ py tools/story.py --story seated --copy D:\       # copies 901-910 + looks to D:
 
 py tools/story.py --story corbeau     # Le Corbeau et le Renard, three voices
 py tools/story.py --story corbeau --copy D:\     # copies 950-961 to D:\02
+
+py tools/story.py --story cochons     # Les Trois Petits Cochons, five voices
+py tools/story.py --story cochons --copy D:\     # copies 962-989 to D:\02
 ```
 
 ```powershell
@@ -247,6 +250,7 @@ python k1ctl.py --sim routine routines/story_chat_botte.json
 python k1ctl.py --sim routine routines/story_bremen.json
 python k1ctl.py --sim routine routines/story_seated.json
 python k1ctl.py --sim routine routines/story_corbeau.json
+python k1ctl.py --sim routine routines/story_cochons.json
 ```
 
 Each story owns a disjoint clip-id range and its own output directory — First
@@ -255,9 +259,9 @@ Boot is `301+` in `build/story/`, Derelict is `401+` in
 `build/story/derelict_fr/`, the Grimm tale is `601+` in
 `build/story/grimm/`, *Le Chat Botté* is `701+` in
 `build/story/chat_botte/`, *Les Musiciens de Brême* is `801+` in
-`build/story/bremen/`, the seated tale is `901+` in `build/story/seated/`, and
-the fable is `950+` in `build/story/corbeau/` — because the card's `02/` folder
-is flat. Building
+`build/story/bremen/`, the seated tale is `901+` in `build/story/seated/`, the
+fable is `950+` in `build/story/corbeau/`, and the pigs are `962+` in
+`build/story/cochons/` — because the card's `02/` folder is flat. Building
 one therefore cannot overwrite the clips another routine names; a test asserts
 the ranges never intersect. Derelict uses only stunts the owner watched perform,
 and `Play Dead` again supplies the "death" because it is the one factory action
@@ -300,6 +304,16 @@ dropped (rate -12, pitch -20, 1.8 kHz low-pass), the dog is Paul near normal
 "monster" is the stack of animals — and the night intruder is the `boing`/`thud`
 pair plus a rooster crow. All 11 stunts are confirmed `yes`, all end standing, no
 walking.
+
+`--story cochons` is *Les Trois Petits Cochons*, five voices and a pitch ladder.
+The first pig is Julie at +10/+22 lifted post-synthesis to ~244 Hz, the second is
+Paul at +4/+6 shifted to ~183 Hz, the third is Hortense at -4/-10 shifted down to
+~153 Hz, and the wolf is Paul at -10/-20 with a 1.6 kHz low-pass and 0.08 echo at
+~106 Hz. The straw house goes with `boing`, the wooden one with `thud`, and the
+brick house survives a `Crazy` tantrum. The seven stunts are `Say Hello`,
+`Wave Hands`, `Bow, Please`, `Play Cool`, `Crazy`, `Celebrate` and a closing
+`Bow, Please`. Clips `962–989`, 155.3 s, routine `routines/story_cochons.json`;
+no new card scripts and no walking.
 
 `--story corbeau` is *Le Corbeau et le Renard*, La Fontaine's fable in three
 voices. The raven is Paul slowed and dropped (rate -14, pitch -24, 2 kHz

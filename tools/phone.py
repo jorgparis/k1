@@ -54,6 +54,7 @@ BLURBS = {
     "bremen": "Quatre animaux trop vieux pour servir, une maison de voleurs, et un concert qui fait fuir tout le monde.",
     "seated": "Le Loup et les Sept Chevreaux, joué assis : la chèvre, le loup et les chevreaux, la tête qui suit chaque réplique, et la patte que le loup montre.",
     "corbeau": "La fable de La Fontaine à trois voix : le corbeau vaniteux, le renard flatteur, et le fromage qui tombe.",
+    "cochons": "Les trois petits cochons à cinq voix : trois frères, trois maisons, et un loup qui souffle de plus en plus fort.",
 }
 
 # The moves menu: every spec action plus the scripts this card holds that

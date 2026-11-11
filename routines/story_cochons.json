@@ -1,0 +1,205 @@
+{
+  "name": "story_cochons",
+  "description": "Le conte des trois petits cochons \u00e0 cinq voix : les trois fr\u00e8res, le narrateur et le loup. N\u00e9cessite ses 02/*.mp3 (962+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/962"
+    },
+    {
+      "wait": 4.73
+    },
+    {
+      "speak": "02/963"
+    },
+    {
+      "wait": 4.5
+    },
+    {
+      "action": "Say Hello",
+      "grace": 21.5
+    },
+    {
+      "speak": "02/964"
+    },
+    {
+      "wait": 2.83
+    },
+    {
+      "speak": "02/965"
+    },
+    {
+      "wait": 4.47
+    },
+    {
+      "action": "Wave Hands",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/966"
+    },
+    {
+      "wait": 2.61
+    },
+    {
+      "speak": "02/967"
+    },
+    {
+      "wait": 5.13
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/968"
+    },
+    {
+      "wait": 3.32
+    },
+    {
+      "speak": "02/969"
+    },
+    {
+      "wait": 3.27
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/970"
+    },
+    {
+      "wait": 2.1
+    },
+    {
+      "speak": "02/971"
+    },
+    {
+      "wait": 5.07
+    },
+    {
+      "speak": "02/972"
+    },
+    {
+      "wait": 3.46
+    },
+    {
+      "speak": "02/973"
+    },
+    {
+      "wait": 3.9
+    },
+    {
+      "speak": "02/974"
+    },
+    {
+      "wait": 0.85
+    },
+    {
+      "speak": "02/975"
+    },
+    {
+      "wait": 5.32
+    },
+    {
+      "speak": "02/976"
+    },
+    {
+      "wait": 3.15
+    },
+    {
+      "speak": "02/977"
+    },
+    {
+      "wait": 5.07
+    },
+    {
+      "speak": "02/978"
+    },
+    {
+      "wait": 3.81
+    },
+    {
+      "speak": "02/979"
+    },
+    {
+      "wait": 3.9
+    },
+    {
+      "speak": "02/980"
+    },
+    {
+      "wait": 0.8
+    },
+    {
+      "speak": "02/981"
+    },
+    {
+      "wait": 5.8
+    },
+    {
+      "speak": "02/982"
+    },
+    {
+      "wait": 3.41
+    },
+    {
+      "speak": "02/983"
+    },
+    {
+      "wait": 5.07
+    },
+    {
+      "speak": "02/984"
+    },
+    {
+      "wait": 4.32
+    },
+    {
+      "speak": "02/985"
+    },
+    {
+      "wait": 3.27
+    },
+    {
+      "action": "Crazy",
+      "grace": 20.1
+    },
+    {
+      "speak": "02/986"
+    },
+    {
+      "wait": 5.74
+    },
+    {
+      "speak": "02/987"
+    },
+    {
+      "wait": 1.5
+    },
+    {
+      "speak": "02/988"
+    },
+    {
+      "wait": 4.25
+    },
+    {
+      "action": "Celebrate",
+      "grace": 21.7
+    },
+    {
+      "wait": 6.0
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/989"
+    },
+    {
+      "wait": 0.78
+    }
+  ]
+}

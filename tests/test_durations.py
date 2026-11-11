@@ -117,7 +117,7 @@ def main() -> int:
     routines = {name: ROOT / "routines" / f"{name}.json"
                 for name in ("story_first_boot", "story_derelict",
                              "story_derelict_fr", "story_grimm", "story_chat_botte",
-                             "story_bremen", "story_corbeau")}
+                             "story_bremen", "story_corbeau", "story_cochons")}
     for rid, routine in routines.items():
         if not routine.exists():
             report.check(f"{rid} routine present", False, str(routine))
