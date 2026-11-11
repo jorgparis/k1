@@ -488,9 +488,10 @@ CORBEAU = [
     ("say", "Le Corbeau ne se sent pas de joie.", "narrator"),
     ("action", "Wave Hands"),
     ("say", "Croa ! Croa !", "raven"),
-    # The cheese. The thud is the beat the whole fable turns on.
-    ("sfx", "thud"),
+    # The cheese falls when the beak opens: the thud lands after the line that
+    # describes the act, not before it.
     ("say", "Il ouvre un large bec et laisse tomber son fromage.", "narrator"),
+    ("sfx", "thud"),
     ("say", "Apprenez que tout flatteur vit aux dépens de celui qui l'écoute.",
      "fox"),
     ("action", "Play Cool"),
