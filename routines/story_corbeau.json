@@ -1,0 +1,97 @@
+{
+  "name": "story_corbeau",
+  "description": "La fable de La Fontaine \u00e0 trois voix : le narrateur, le corbeau (Paul ralenti et filtr\u00e9) et le renard (Julie). N\u00e9cessite ses 02/*.mp3 (950+) sur la carte, sinon la narration est muette et seules les cascades jouent.",
+  "steps": [
+    {
+      "speak": "02/950"
+    },
+    {
+      "wait": 4.58
+    },
+    {
+      "speak": "02/951"
+    },
+    {
+      "wait": 2.11
+    },
+    {
+      "speak": "02/952"
+    },
+    {
+      "wait": 4.61
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/953"
+    },
+    {
+      "wait": 6.8
+    },
+    {
+      "speak": "02/954"
+    },
+    {
+      "wait": 3.43
+    },
+    {
+      "speak": "02/955"
+    },
+    {
+      "wait": 2.23
+    },
+    {
+      "action": "Wave Hands",
+      "grace": 23.3
+    },
+    {
+      "speak": "02/956"
+    },
+    {
+      "wait": 2.11
+    },
+    {
+      "speak": "02/957"
+    },
+    {
+      "wait": 0.8
+    },
+    {
+      "speak": "02/958"
+    },
+    {
+      "wait": 3.09
+    },
+    {
+      "speak": "02/959"
+    },
+    {
+      "wait": 3.58
+    },
+    {
+      "action": "Play Cool",
+      "grace": 23.9
+    },
+    {
+      "speak": "02/960"
+    },
+    {
+      "wait": 5.71
+    },
+    {
+      "wait": 0.29
+    },
+    {
+      "action": "Bow, Please",
+      "grace": 20.7
+    },
+    {
+      "speak": "02/961"
+    },
+    {
+      "wait": 0.78
+    }
+  ]
+}

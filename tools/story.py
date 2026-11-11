@@ -460,6 +460,46 @@ SEATED = [
     ("actionPath", "SpeAction/stand"),
 ]
 
+# La Fontaine, public domain. A two-character fable: the raven is Paul dropped
+# and filtered into a croak, the fox is Julie light and quick. The flattery has
+# to sound *pleasant* (that is the trap), so the fox gets no effects at all.
+CORBEAU_CAST = {
+    "narrator": {"engine": "onecore", "voice": "Microsoft Hortense",
+                 "rate": 0, "pitch": "0%", "label": ""},
+    "raven": {"engine": "onecore", "voice": "Microsoft Paul",
+              "rate": -14, "pitch": "-24%", "label": "LE CORBEAU",
+              "fx": {"lowpass": 2000, "echo": 0.06}},
+    "fox": {"engine": "onecore", "voice": "Microsoft Julie",
+            "rate": 3, "pitch": "+8%", "label": "LE RENARD"},
+}
+
+CORBEAU = [
+    ("say", "Maître Corbeau, sur un arbre perché, tenait en son bec un fromage.",
+     "narrator"),
+    ("say", "Croa ! Croa !", "raven"),
+    ("say", "Maître Renard, par l'odeur alléché, lui tint à peu près ce langage.",
+     "narrator"),
+    # The bow is the fox's greeting, and it is silent: the flattery must not be
+    # talked over.
+    ("action", "Bow, Please"),
+    ("say", "Hé ! bonjour, Monsieur du Corbeau. Que vous êtes joli ! Que vous me "
+            "semblez beau !", "fox"),
+    ("say", "Sans mentir, vous êtes le phénix des hôtes de ces bois !", "fox"),
+    ("say", "Le Corbeau ne se sent pas de joie.", "narrator"),
+    ("action", "Wave Hands"),
+    ("say", "Croa ! Croa !", "raven"),
+    # The cheese. The thud is the beat the whole fable turns on.
+    ("sfx", "thud"),
+    ("say", "Il ouvre un large bec et laisse tomber son fromage.", "narrator"),
+    ("say", "Apprenez que tout flatteur vit aux dépens de celui qui l'écoute.",
+     "fox"),
+    ("action", "Play Cool"),
+    ("say", "Le Corbeau, honteux et confus, jura, mais un peu tard, qu'on ne l'y "
+            "prendrait plus.", "narrator"),
+    ("action", "Bow, Please"),
+    ("say", "Fin.", "narrator"),
+]
+
 BREMEN = [
     ("sfx", "sparkle"),
     ("say", "Il était une fois un âne qui portait les sacs de son maître depuis "
@@ -660,6 +700,21 @@ STORIES = {
                        "les ~5 s. Nécessite les 02/*.mp3 (901+) et les scripts "
                        "sit / stand / sit look left / sit look right / "
                        "sit show hand sur la carte. Ne pas désactiver autoStand.",
+    },
+    "corbeau": {
+        "title": "Le Corbeau et le Renard",
+        "language": "FR",
+        "table": CORBEAU,
+        "first_id": 950,
+        "build": ROOT / "build" / "story" / "corbeau",
+        "routine": ROOT / "routines" / "story_corbeau.json",
+        "voice": "Microsoft Hortense",
+        "rate": 0,
+        "cast": CORBEAU_CAST,
+        "description": "La fable de La Fontaine à trois voix : le narrateur, le "
+                       "corbeau (Paul ralenti et filtré) et le renard (Julie). "
+                       "Nécessite ses 02/*.mp3 (950+) sur la carte, sinon la "
+                       "narration est muette et seules les cascades jouent.",
     },
 }
 
