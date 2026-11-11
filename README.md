@@ -1,16 +1,5 @@
 # k1lib — drive your Robosen Interstellar Scout K1 from Python
 
-Bluetooth LE control for the K1. No Wi-Fi on this robot, and the phone app is the
-only "official" interface — this replaces it with something scriptable.
-
-Built on the protocol reverse-engineered by
-[RobosenJS](https://github.com/oklemenz/RobosenJS) (Apache-2.0). The joint table,
-stunt list and command codes are read **live from that package's `robot.json`**,
-so they cannot drift out of sync.
-
-Source: **https://github.com/jorgparis/k1** (MIT). The public copy is sanitised
-(robot serial, MAC and personal paths removed); `build/` stays out of git.
-
 ## Videos
 
 The robot performing the stories it was built to tell:
@@ -22,6 +11,17 @@ The robot performing the stories it was built to tell:
 | Le Chat Botté | [youtu.be/lvQt1vo9rB0](https://youtu.be/lvQt1vo9rB0) |
 | Le Pêcheur et sa Femme | [youtu.be/1oO8OMTlwc4](https://youtu.be/1oO8OMTlwc4) |
 | Le Loup et les Sept Chevreaux (assis) | [youtube.com/shorts/RS12QV9owrY](https://youtube.com/shorts/RS12QV9owrY) |
+
+Bluetooth LE control for the K1. No Wi-Fi on this robot, and the phone app is the
+only "official" interface — this replaces it with something scriptable.
+
+Built on the protocol reverse-engineered by
+[RobosenJS](https://github.com/oklemenz/RobosenJS) (Apache-2.0). The joint table,
+stunt list and command codes are read **live from that package's `robot.json`**,
+so they cannot drift out of sync.
+
+Source: **https://github.com/jorgparis/k1** (MIT). The public copy is sanitised
+(robot serial, MAC and personal paths removed); `build/` stays out of git.
 
 ## Architecture
 
