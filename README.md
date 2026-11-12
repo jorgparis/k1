@@ -12,6 +12,13 @@ The robot performing the stories it was built to tell:
 | Le Pêcheur et sa Femme | [youtu.be/1oO8OMTlwc4](https://youtu.be/1oO8OMTlwc4) |
 | Le Loup et les Sept Chevreaux (assis) | [youtube.com/shorts/RS12QV9owrY](https://youtube.com/shorts/RS12QV9owrY) |
 
+## WebGL demo
+
+[`webgl/k1/`](webgl/k1/README.md) is a self-contained browser demo of the
+17-joint rig: one slider per servo, presets, and all 90 moves from the phone's
+menu with the clocks measured on hardware. Open `webgl/k1/k1.html` directly —
+no server, build step or Python needed.
+
 Bluetooth LE control for the K1. No Wi-Fi on this robot, and the phone app is the
 only "official" interface — this replaces it with something scriptable.
 

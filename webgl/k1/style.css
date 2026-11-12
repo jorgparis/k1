@@ -1,0 +1,211 @@
+/* K1 - retro shell */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%; width: 100%;
+  background: #05060b; overflow: hidden;
+  font-family: "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace;
+  color: #9fb0c8;
+  -webkit-user-select: none; user-select: none;
+}
+body { display: flex; align-items: center; justify-content: center; }
+
+#gl {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  box-shadow: 0 0 60px rgba(60, 140, 255, .12), 0 0 0 1px #1a2030;
+  cursor: grab;
+  touch-action: none;
+}
+#gl:active { cursor: grabbing; }
+
+#hint, #keys {
+  position: fixed; left: 0; right: 0; text-align: center;
+  font-size: 11px; letter-spacing: .06em; color: #4a5a72;
+  pointer-events: none; z-index: 5;
+}
+#hint { top: 8px; }
+#keys { bottom: 8px; }
+#keys b { color: #6f88a8; font-weight: normal; border-bottom: 1px dotted #33415a; }
+
+#intro {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 45%, rgba(20, 12, 40, .92), rgba(3, 4, 9, .98));
+  cursor: pointer; transition: opacity .45s ease;
+}
+#intro.gone { opacity: 0; pointer-events: none; }
+
+.panel { text-align: center; padding: 28px 42px; }
+.panel h1 {
+  margin: 0 0 6px; font-size: 58px; letter-spacing: .30em; font-weight: normal;
+  color: #ffb03c; text-shadow: 0 0 18px rgba(255, 150, 40, .35);
+  animation: flick 3.2s infinite steps(1);
+}
+.panel h1 .dim { color: #6a3c10; }
+.panel .sub { margin: 0; font-size: 12px; letter-spacing: .18em; color: #54e8ff; }
+.panel .sub2 { margin: 4px 0 20px; font-size: 10px; letter-spacing: .1em; color: #4a5a72; }
+.panel .bar {
+  width: 260px; height: 8px; margin: 0 auto 18px;
+  border: 1px solid #2a3a52; background: #0a0e18; padding: 1px;
+}
+.panel .bar i {
+  display: block; height: 100%; width: 0%;
+  background: repeating-linear-gradient(90deg, #ff8a1e 0 6px, #7c3208 6px 8px);
+  animation: load 2.4s ease-in-out infinite;
+}
+.panel .go { margin: 0 0 10px; font-size: 13px; color: #e8f4ff; animation: blink 1.1s steps(1) infinite; }
+.panel .tiny { margin: 0; font-size: 10px; color: #35455e; letter-spacing: .12em; }
+
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes load { 0% { width: 4%; } 70% { width: 96%; } 100% { width: 100%; } }
+@keyframes flick {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: .55; }
+  98% { opacity: .9; }
+}
+
+/* Diagnostics never cover the canvas. There is no full-screen variant on
+   purpose: a warning you cannot see past is worse than no warning, and a dead
+   demo has nothing behind it worth looking at anyway. The message also goes
+   into the intro panel and the document title, so it cannot be missed. */
+#nogl {
+  position: fixed; display: none; z-index: 40;
+  right: 10px; bottom: 34px; max-width: 44vw; max-height: 38vh; overflow: auto;
+  padding: 9px 12px; text-align: left; white-space: pre-wrap; line-height: 1.45;
+  color: #ff5a3c; font-size: 12px;
+  background: rgba(10, 12, 18, .93);
+  border: 1px solid #4a2020;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 6px 22px rgba(0, 0, 0, .55);
+  pointer-events: none;           /* never intercept clicks meant for the demo */
+}
+#nogl.sticky { z-index: 45; }
+.panel .go.err { color: #ff5a3c; animation: none; }
+
+/* --------------------------------------------------------- servo panel */
+/* The right-hand column is the point of this fork: every servo, its protocol
+   index, and a slider that spans exactly that servo's travel. It is DOM rather
+   than canvas, so the numbers can be selected and copied, and it scrolls on a
+   short window instead of shrinking the type. */
+#panel {
+  position: fixed; z-index: 6;
+  top: 34px; right: 12px; bottom: 34px; width: 262px;
+  display: flex; flex-direction: column;
+  background: rgba(8, 11, 18, .88);
+  border: 1px solid #1d2a3d;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), 0 10px 30px rgba(0, 0, 0, .45);
+  color: #8ea2bd; font-size: 11px; letter-spacing: .03em;
+  -webkit-user-select: text; user-select: text;
+}
+#panel .head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 10px 7px; border-bottom: 1px solid #1d2a3d;
+  color: #54e8ff; font-size: 11px; letter-spacing: .12em;
+}
+#panel .head span { color: #3f516b; letter-spacing: .06em; }
+
+#rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+#rows::-webkit-scrollbar { width: 6px; }
+#rows::-webkit-scrollbar-thumb { background: #24344a; }
+
+.row {
+  display: grid; grid-template-columns: 102px 1fr 26px;
+  align-items: center; gap: 5px;
+  padding: 5px 9px; border-left: 2px solid transparent;
+}
+.row label {
+  display: flex; gap: 5px; align-items: baseline;
+  overflow: hidden; white-space: nowrap;
+}
+.row label i { color: #3f516b; font-style: normal; font-size: 10px; }
+.row label span { color: #93a8c4; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
+.row output {
+  text-align: right; color: #93a8c4;
+  font-variant-numeric: tabular-nums; font-size: 10.5px;
+}
+/* amber means "this servo is not at neutral" - a moved joint is the thing you
+   are looking for when you come back to a pose after a minute */
+.row.moved label span, .row.moved output { color: #ffb03c; }
+.row.on { background: rgba(84, 232, 255, .06); border-left-color: #54e8ff; }
+.row.on label span, .row.on output { color: #e8f4ff; }
+
+.row input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 16px; margin: 0; background: transparent; cursor: pointer;
+}
+.row input[type=range]::-webkit-slider-runnable-track { height: 3px; background: #24344a; }
+.row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 8px; height: 14px; margin-top: -5.5px;
+  background: #54e8ff; border: 0; box-shadow: 0 0 6px rgba(84, 232, 255, .4);
+}
+.row input[type=range]::-moz-range-track { height: 3px; background: #24344a; }
+.row input[type=range]::-moz-range-thumb {
+  width: 8px; height: 14px; border: 0; border-radius: 0;
+  background: #54e8ff; box-shadow: 0 0 6px rgba(84, 232, 255, .4);
+}
+
+/* --------------------------------------------------------- move browser */
+/* The phone page's moves, built from src/actions.js at boot. The list is a
+   listbox rather than a dropdown so the groups are visible while browsing;
+   the filter only rebuilds options from the same generated array. */
+#moves {
+  flex: 0 0 auto; padding: 6px 8px 5px;
+  border-bottom: 1px solid #1d2a3d;
+}
+#moves .movehead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px; color: #ffb03c; font-size: 10px; letter-spacing: .12em;
+}
+#moves .movehead span { color: #3f516b; letter-spacing: .04em; }
+#moveFind {
+  width: 100%; margin: 0 0 4px; padding: 3px 5px;
+  font: inherit; font-size: 10px; color: #dbe7f6;
+  background: #0a0e18; border: 1px solid #27384e; outline: none;
+}
+#moveFind:focus { border-color: #54e8ff; }
+#moveFind::placeholder { color: #3f516b; }
+#movePick {
+  width: 100%; height: 82px; padding: 2px;
+  font: inherit; font-size: 10px; line-height: 1.35;
+  color: #9fb0c8; background: #0a0e18; border: 1px solid #27384e; outline: none;
+  overflow-y: auto;
+}
+#movePick:focus { border-color: #54e8ff; }
+#movePick option { padding: 1px 3px; }
+#movePick option:disabled { color: #35455e; }
+#movePick optgroup { color: #54e8ff; font-style: normal; letter-spacing: .06em; }
+#moveBar {
+  height: 3px; margin: 5px 0 3px; background: #1a2434; overflow: hidden;
+}
+#moveBar i {
+  display: block; width: 0%; height: 100%;
+  background: repeating-linear-gradient(90deg, #ffb03c 0 4px, #7c4a12 4px 6px);
+}
+#moveInfo {
+  min-height: 2.6em; margin: 0 0 4px;
+  color: #6f88a8; font-size: 9.5px; line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+#moves .moveline { display: flex; gap: 4px; }
+
+#panel .foot {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 7px 8px; border-top: 1px solid #1d2a3d;
+}
+#panel .foot button, #moves button {
+  font: inherit; font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
+  color: #9fb0c8; background: #121a26; border: 1px solid #27384e;
+  padding: 4px 6px; cursor: pointer;
+}
+#panel .foot button:hover, #moves button:hover { color: #05060b; background: #54e8ff; border-color: #54e8ff; }
+/* buttons backed by the robot's own card data, not a made-up pose */
+#panel .foot button.real, #moves button.real { color: #ffb03c; border-color: #7a4a12; }
+#panel .foot button.real:hover, #moves button.real:hover { color: #05060b; background: #ffb03c; border-color: #ffb03c; }
+#copied { color: #ffb03c; font-size: 10px; align-self: center; min-height: 1em; }
+
+/* Keep the canvas out from under the panel on a window wide enough for both.
+   Below that the panel simply sits on top, which still leaves the model usable. */
+@media (min-width: 860px) {
+  body { padding-right: 286px; }
+  #keys { padding-right: 276px; }
+}

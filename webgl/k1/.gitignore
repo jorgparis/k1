@@ -1,0 +1,6 @@
+# Screenshots from the headless probes
+shot.png
+
+# Python cache from test/genactions.py
+__pycache__/
+*.py[cod]

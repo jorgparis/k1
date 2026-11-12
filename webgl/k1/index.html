@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>K1 - 17 servos, mapped</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <div id="hint">PAUSE:OFF  WIRE:OFF  MODE:0  HUE:OFF  HUD:ON  MUSIC:OFF</div>
+  <div id="keys">
+    <b>&larr; &rarr;</b> pick servo &nbsp; <b>&uarr; &darr;</b> move it &nbsp; <b>0</b> neutral &nbsp;
+    <b>P</b> push ups &nbsp;
+    <b>SPACE</b> pause &nbsp; <b>R</b> reset &nbsp; <b>W</b> wireframe &nbsp; <b>N</b> shade &nbsp;
+    <b>C</b> colour &nbsp; <b>H</b> hud &nbsp; <b>M</b> music &nbsp; <b>1-4</b> camera &nbsp; <b>drag</b> orbit &nbsp; <b>wheel</b> zoom
+  </div>
+
+  <div id="panel">
+    <div class="head"><b>17 SERVOS</b><span>robot.json</span></div>
+    <div id="moves">
+      <div class="movehead"><b>MOVES</b><span id="moveCount"></span></div>
+      <input id="moveFind" type="search" placeholder="find an action" autocomplete="off" spellcheck="false">
+      <select id="movePick" size="6" aria-label="Action"></select>
+      <div id="moveBar"><i></i></div>
+      <div id="moveInfo">&mdash;</div>
+      <div class="moveline">
+        <button id="movePlay" class="real">play</button>
+        <button id="moveStop">stop</button>
+      </div>
+    </div>
+    <div id="rows"></div>
+    <div class="foot">
+      <button data-preset="neutral">neutral</button>
+      <button data-preset="lookLeft">look left</button>
+      <button data-preset="armsOut">arms out</button>
+      <button data-preset="elbows">elbows</button>
+      <button data-preset="crouch">crouch</button>
+      <button data-preset="hipRoll">hip roll</button>
+      <button id="copy">copy pose</button>
+      <span id="copied"></span>
+    </div>
+  </div>
+
+  <div id="intro">
+    <div class="panel">
+      <h1>K<span class="dim">1</span></h1>
+      <p class="sub">RAW WEBGL &middot; 320&times;200 &middot; FLAT SHADED LOW POLY</p>
+      <p class="sub2">17 servos &middot; real limits from robot.json &middot; one slider per motor</p>
+      <div class="bar"><i></i></div>
+      <p class="go">CLICK OR PRESS ANY KEY TO RUN THE DEMO</p>
+      <p class="tiny">the model is a guess at the axis map; the travel limits are not</p>
+    </div>
+  </div>
+
+  <div id="nogl"></div>
+
+  <script>
+  /* K1 LOAD CHECK - report a failure on the page instead of leaving a black
+     rectangle. Two rules keep this from ever getting in the way:
+       1. only real script errors count. A failed image or favicon also fires an
+          `error` event that bubbles to window, and it must not raise an alarm.
+       2. the panel is a corner toast, never a full-screen overlay. It is also
+          pointer-transparent, so it cannot steal a click meant for the demo.
+          The message additionally goes into the intro panel and the tab title. */
+  (function () {
+    var panel = null, shown = false, timer = 0;
+
+    function fail(msg, sticky) {
+      panel = panel || document.getElementById('nogl');
+      if (!panel) return;
+      panel.textContent = msg;
+      panel.className = sticky ? 'sticky' : '';
+      panel.style.display = 'flex';
+      clearTimeout(timer);
+      if (!sticky) timer = setTimeout(hide, 14000);
+    }
+    function hide() { if (panel) panel.style.display = 'none'; }
+    // main.js calls this; it also writes the message into the intro + title
+    function report(msg, sticky) { if (!shown) { shown = true; fail(msg, sticky); } }
+    report.claim = function () { shown = true; };
+    window.K1_DIED = report;
+    window.K1_HIDE = hide;
+
+    /* any key or click clears the toast */
+    window.addEventListener('keydown', hide);
+    document.addEventListener('click', hide);
+
+    window.addEventListener('error', function (e) {
+      var t = e.target;
+      // a sub-resource failed: only our own modules matter, and only if it is
+      // a script. images, css and favicons are expected to 404 sometimes.
+      if (t && t !== window) {
+        if (t.tagName === 'SCRIPT') {
+          report('COULD NOT LOAD SCRIPT\n' + (t.src || '(inline)') +
+            '\n\nYou opened a source file, not the demo.\nOpen k1.html instead.', true);
+        }
+        return;
+      }
+      if (!e.message) return;                    // resource error, not a script error
+      report('JAVASCRIPT ERROR\n' + e.message +
+        '\n\n' + (e.filename || '') + ' line ' + (e.lineno || 0), !window.__K1_BOOTED);
+    });
+
+    window.addEventListener('unhandledrejection', function (e) {
+      report('PROMISE REJECTED\n' + ((e.reason && e.reason.message) || e.reason), true);
+    });
+
+    // once the module scripts have had their turn, confirm they all arrived
+    window.addEventListener('load', function () {
+      var missing = ['M4', 'GLU', 'Geo', 'K1', 'SH', 'HUD', 'Music'].filter(function (k) {
+        return !window[k];
+      });
+      if (missing.length) {
+        window.__K1_DEAD = true;
+        report('SCRIPTS DID NOT INITIALISE: ' + missing.join(', ') +
+          '\n\nA dependency failed to load. Open k1.html (the\nsingle-file build) instead of browsing the src/ folder.', true);
+      }
+    });
+  })();
+  </script>
+
+  <script src="src/math.js"></script>
+  <script src="src/geo.js"></script>
+  <script src="src/gl.js"></script>
+  <script src="src/shaders.js"></script>
+  <script src="src/k1.js"></script>
+  <script src="src/actions.js"></script>
+  <script src="src/hud.js"></script>
+  <script src="src/music.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
