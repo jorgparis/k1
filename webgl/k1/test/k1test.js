@@ -454,6 +454,26 @@ world(J());
     check('the direction table mirrors every pair and points the head one way',
       pairsMirror && Math.abs(K1.actionDir('head')) === 1);
 
+    /* The hip guess is checkable by name: `Open Legs` stores 20 on both hip
+       servos and the card parks them at 10 in almost every other action. An
+       inverted sign drew the feet together instead, so Celebrate crossed its
+       legs while the real robot spreads them. */
+    world(K1.neutralPose());
+    const stance = midpoint('footR')[2] - midpoint('footL')[2];
+    const stanceAt = (key, t) => {
+      world(K1.actionPose(A[key], t));
+      return midpoint('footR')[2] - midpoint('footL')[2];
+    };
+    const openGap = stanceAt('openlegs', 0);
+    check('Open Legs widens the stance instead of crossing the feet',
+      openGap > stance + 0.05,
+      (openGap * 1000).toFixed(0) + 'mm vs ' + (stance * 1000).toFixed(0) + 'mm neutral');
+    let celMin = Infinity;
+    for (const f of A.celebrate.frames) celMin = Math.min(celMin, stanceAt('celebrate', f.t));
+    check('Celebrate spreads the legs at every keyframe',
+      celMin > stance + 0.05,
+      (celMin * 1000).toFixed(0) + 'mm narrowest vs ' + (stance * 1000).toFixed(0) + 'mm neutral');
+
     /* The leg bend must agree with CROUCH, because that preset was the one
        checked against a human leg: knees flex, feet stay flat-ish. If the thigh
        direction were the other way, the hip and knee would fold in opposition. */

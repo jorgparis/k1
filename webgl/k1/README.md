@@ -92,11 +92,13 @@ to the side. So:
 * hand — **elbow** (z), the forearm folds
 * thigh/calf/ankle — pitch (z); the calf's sign is negative, because a knee
   folds the other way from a hip
-* hip, foot, head — roll, yaw, yaw (small ranges)
+* hip — **abduction** (x): `Open Legs` stores 20 on both hips, and almost every
+  other action parks them at 10, so the short travel opens the stance; foot and
+  head — yaw (small ranges)
 
-If a real nudge on the robot proves one joint wrong, change its `axis` or `sign`
-in the `JOINTS` table at the top of `src/k1.js` and rebuild. Nothing else needs
-to know.
+If a real nudge on the robot proves a joint wrong, change its `axis`/`sign` in
+the `JOINTS` table or its entry in `ACTION_DIR`, both at the top of `src/k1.js`,
+and rebuild. Nothing else needs to know.
 
 One global knob, `D.degPerCount = 0.90`, is how far one count turns a servo.
 That is not a guess either — it is what the card's actions require. They treat
@@ -290,7 +292,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, and dips the pelvis three times, once per pump |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, and checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

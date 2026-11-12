@@ -202,9 +202,12 @@
                     so a positive magnitude flexes the same way. (The thigh
                     sign used to be -1; that would have bent the knee one way
                     and the hip the other, which is not a leg.)
-       hip/foot  -1/+1
-                    tiny range, and no card action drives them far; kept
-                    consistent with the same sign rule so they cannot fight it.
+       hip      +1  the card parks it at 10 in almost every action and names
+                    one `Open Legs`, so the short travel is abduction: equal
+                    magnitudes open the stance. (The old -1 made `Open Legs`
+                    draw the feet together, and made every action start with
+                    the knees closed.)
+       foot     +1  tiny yaw range; kept with the same mirror rule.
 
      Left and right are mirror-mounted (their neutrals sum to ~249), so the
      right side takes the opposite sign: raw = neutral - m. The head is a
@@ -215,7 +218,7 @@
   const ACTION_DIR = {
     thigh: +1, calf: +1, ankle: +1,
     shoulder: -1,
-    hip: -1, foot: +1, arm: -1, hand: -1, head: +1
+    hip: +1, foot: +1, arm: -1, hand: -1, head: +1
   };
 
   function actionDir(name) {
