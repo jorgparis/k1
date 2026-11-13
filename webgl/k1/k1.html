@@ -5466,17 +5466,16 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
   /* --------------------------------------------------------- world matrix */
   const soleV = new Float32Array(4);
 
-  /* The root transform, and the one place a display-only rotation and slide
-     are allowed. `pitch` tips the whole body about the *pelvis* (not about the
-     origin, or the robot would slide sideways as it leans), so composing from
-     the pelvis down keeps the body and its legs in one rigid piece. `tx` then
-     slides that piece along the floor in the robot's own heading, which at yaw
-     0 is plain +X, and `roll` tips it sideways about the same pelvis pivot.
+  /* The root transform, and the one place a display-only slide is allowed.
+     `pitch` tips the whole body about the *pelvis* (not about the origin, or
+     the robot would slide as it leans), so composing from the pelvis down keeps
+     the body and its legs in one rigid piece. `tx` then slides that piece
+     along the floor in the robot's own heading, which at yaw 0 is plain +X;
      `tz` slides it along the robot's right axis, at yaw 0 plain +Z. At
-     pitch 0, roll 0, tx 0 and tz 0 this is exactly the old T(0, y, 0) root. */
-  function composeWorld(y, pitch, tx, roll, tz) {
+     pitch 0, tx 0 and tz 0 this is exactly the old T(0, y, 0) root. */
+  function composeWorld(y, pitch, tx, tz) {
     const h = D.hipH, t = tx || 0, u = tz || 0;
-    M4.compose(rootM, 0, 0, 0, roll || 0, st.yaw, pitch || 0, null);
+    M4.compose(rootM, 0, 0, 0, 0, st.yaw, pitch || 0, null);
     // rootM = T(t along the heading + u to the right, y + h, 0) * R * T(0, -h, 0)
     const fx = Math.cos(st.yaw), fz = -Math.sin(st.yaw);
     const rx = Math.sin(st.yaw), rz = Math.cos(st.yaw);
@@ -5567,15 +5566,18 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
          rests on the floor. That is a display choice, not a servo value: the
          bytes still own every joint.
 
-     The same solve has a sideways half. The pelvis has no roll servo either:
-     both hip servos turn the legs about the fore-aft axis. If both legs abduct
-     equally, the stance simply widens and the body stays upright. If they
-     differ, the body has to take up the difference or the feet slide: the
-     weight-bearing sole stays planted and the pelvis rolls and shifts over it.
-     That is the difference of the two hip rotations, not their sum, so a
-     symmetric Open Legs spreads the legs and a Celebrate hip swing rocks the
-     body. Without it Celebrate moved its feet and left the hips still, which is
-     what made the dance look like a foot shuffle.
+     The same solve has a sideways half. The pelvis has no roll servo and the
+     legs have no lateral joint except hip abduction, so when the two hip
+     servos turn by different amounts the stance itself changes: the foot of
+     the leg that straightens comes in under the body while the other stays
+     out. A rigid K1 cannot keep both soles exactly where they stood, and a
+     body roll would lift the hip on one side, which with the knees still
+     straight lifts that foot. So the display keeps the pelvis upright and
+     slides it sideways until the midpoint between the feet is back under the
+     body. The soles stay on the floor - the foot on the splayed leg rocks onto
+     an edge rather than leaving the ground - and the pelvis swings left and
+     right. That is what makes Celebrate read as a hip sway instead of a foot
+     shuffle: before, the pelvis stayed put and the feet did all the moving.
 
      Otherwise the sole is then planted and slid back to where it stands in the
      neutral pose. The caller lifts the whole model only if the *other* foot
@@ -5600,30 +5602,26 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     if (act.data && act.data.contact === 'seat') {
       /* World is still at pitch 0 above; drop it onto its lowest point. */
       composeWorld(0, 0, 0);
-      return { pitch: 0, roll: 0, tx: 0, tz: 0, ty: -lowestPart() };
+      return { pitch: 0, tx: 0, tz: 0, ty: -lowestPart() };
     }
     pitch = clamp(pitch, -2.7, 2.7);
-    /* The hip rotations are what the servos actually do; their difference is
-       the part a planted stance turns into body roll. Clamped like the pitch:
-       a file that asks for a fall should not spin the model over. */
-    const hipRoll = -(byName.hipL.rot[0] + byName.hipR.rot[0]);
-    const roll = clamp(hipRoll, -0.45, 0.45);
-    /* Where the support foot stood before the display-only roll; the roll is
-       compensated sideways so it does not drag that foot across the floor. */
-    composeWorld(0, pitch, 0, 0, 0);
-    const pre = byName[foot].world;
-    const preLat = pre[12] * Math.sin(st.yaw) + pre[14] * Math.cos(st.yaw);
-    composeWorld(0, pitch, 0, roll, 0);
+    /* Plant the support sole where it stood in the neutral pose, along the
+       heading. */
+    composeWorld(0, pitch, 0, 0);
     const s0 = soleLow(foot);
     const fwd = s0.x * Math.cos(st.yaw) + s0.z * -Math.sin(st.yaw);
     const tx = ref[side] - fwd;
-    composeWorld(0, pitch, tx, roll, 0);
-    const now = byName[foot].world;
-    const lat = now[12] * Math.sin(st.yaw) + now[14] * Math.cos(st.yaw);
-    const tz = preLat - lat;
-    composeWorld(0, pitch, tx, roll, tz);
-    const s = soleLow(foot);
-    return { pitch, roll, tx, tz, ty: -s.y };
+    /* Then share the sideways change between the feet: put their midpoint back
+       under the body instead of dragging the support foot across the floor. */
+    const lat = (nm) => {
+      const w = byName[nm].world;
+      return w[12] * Math.sin(st.yaw) + w[14] * Math.cos(st.yaw);
+    };
+    composeWorld(0, pitch, tx, 0);
+    const tz = -(lat('footL') + lat('footR')) / 2;
+    composeWorld(0, pitch, tx, tz);
+    const low = Math.min(soleLow('footL').y, soleLow('footR').y);
+    return { pitch, tx, tz, ty: -low };
   }
 
   /* The body pitch that puts the lowest palm at the same height as the lowest
@@ -5749,17 +5747,14 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     };
   }
 
-  /* The pitch and sideways rock actually applied, for the HUD and the
-     harnesses. display only. */
-  let bodyPitch = 0, bodyRoll = 0;
+  /* The pitch actually applied, for the HUD and the harnesses. display only. */
+  let bodyPitch = 0;
   function bodyLean() { return bodyPitch; }
-  function bodyTilt() { return bodyRoll; }
 
   function updateWorld() {
     const s = support();
-    composeWorld(s.ty, s.pitch, s.tx, s.roll, s.tz);
+    composeWorld(s.ty, s.pitch, s.tx, s.tz);
     bodyPitch = s.pitch;
-    bodyRoll = s.roll;
     /* Safety net: if the pose puts the other foot - or, in a contact action,
        a palm, or in a seated action any part at all - below the floor (a
        kneel, an asymmetric action, a frame halfway between two touching
@@ -5769,7 +5764,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     const low = act.data && act.data.contact === 'seat'
       ? lowestPart()
       : Math.min(lowestSole(), lowestPalm());
-    if (low < 0) composeWorld(s.ty - low, s.pitch, s.tx, s.roll, s.tz);
+    if (low < 0) composeWorld(s.ty - low, s.pitch, s.tx, s.tz);
   }
 
   /* ------------------------------------------------------------- camera */
@@ -6123,7 +6118,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     st, JOINTS, PRESETS, applyPreset, poseJSON, nudge, selectJoint,
     act, actions, actionList, playAction, stopAction,
     camera: cam, cameraPresets: CAM_PRESETS,
-    lean: () => bodyLean(), tilt: () => bodyTilt(),
+    lean: () => bodyLean(),
     /* Where the rig actually ended up, in world space. The harnesses and the
        screenshot probes use this to measure contact - a hand on the floor, a
        sole on the floor - instead of looking at pixels. */

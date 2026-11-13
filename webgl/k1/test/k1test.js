@@ -816,42 +816,62 @@ world(J());
     }
     demo.stopAction();
 
-    /* ---- a hip swing is body roll, not a foot shuffle ---- */
-    /* Celebrate drives its two hip servos in opposite directions while the
-       rest of the legs stay neutral. If the display leaves the pelvis upright
-       and swings the feet, the dance reads as a foot shuffle with no hips. The
-       weight-bearing sole has to stay planted and the body must roll and shift
-       over it. Open Legs drives both hips outward together, which is a stance
-       change and must stay upright. */
+    /* ---- a hip swing is the pelvis sliding over planted feet ---- */
+    /* Celebrate drives its two hip servos apart: one leg returns to vertical
+       while the other stays abducted, so the stance under the body changes. A
+       rigid K1 cannot keep both soles exactly where they stood and also keep
+       the pelvis centred, and a body roll would lift the hip on the long leg,
+       which with the knees still straight lifts that foot. It slides the
+       pelvis sideways instead; the soles stay on the floor, the splayed foot
+       rocking onto an edge. The old display kept the pelvis still and swung
+       the feet, which read as a foot shuffle. Open Legs moves both hips
+       together, so its pelvis stays put. */
     const atPart = (m, n) => m.find((p) => p.name === n);
+    const soleGap = (m) => Math.max(atPart(m, 'footL').low, atPart(m, 'footR').low);
     demo.playAction('celebrate');
     const celeAt = (t) => {
       while (demo.act.playing && demo.act.t < t) tick(1);
       return demo.measure();
     };
     const celeA = celeAt(3.059);
-    check('Celebrate rolls the body over the planted foot (a hip swing, not a foot shuffle)',
-      demo.tilt() > 5 * Math.PI / 180 && Math.abs(atPart(celeA, 'pelvis').z) > 0.04,
-      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(1) + 'deg, pelvis z '
-      + atPart(celeA, 'pelvis').z.toFixed(3) + ' m');
-    check('the weight-bearing foot stays planted while the other lifts for the swing',
-      Math.abs(atPart(celeA, 'footR').z - 0.154) < 0.01 && atPart(celeA, 'footR').low < 0.005 &&
-      atPart(celeA, 'footL').low > 0.01,
-      'footR z ' + atPart(celeA, 'footR').z.toFixed(3) + ' low ' + atPart(celeA, 'footR').low.toFixed(3)
-      + ', footL low ' + atPart(celeA, 'footL').low.toFixed(3));
+    check('Celebrate swings the pelvis toward the straightened leg (hips, not a foot shuffle)',
+      atPart(celeA, 'pelvis').z < -0.025 &&
+      Math.abs(atPart(celeA, 'head').z - atPart(celeA, 'pelvis').z) < 0.01,
+      'pelvis z ' + atPart(celeA, 'pelvis').z.toFixed(3) + ' m, head z '
+      + atPart(celeA, 'head').z.toFixed(3) + ' m');
+    check('both soles stay on the floor through the swing (no foot lift)',
+      soleGap(celeA) < 0.003,
+      'higher sole ' + (soleGap(celeA) * 1000).toFixed(1) + ' mm up');
     const celeB = celeAt(4.962);
-    check('Celebrate mirrors the swing onto the other foot',
-      demo.tilt() < -5 * Math.PI / 180 && atPart(celeB, 'pelvis').z < -0.04 &&
-      atPart(celeB, 'footL').low < 0.005 && atPart(celeB, 'footR').low > 0.01,
-      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(1) + 'deg, pelvis z '
-      + atPart(celeB, 'pelvis').z.toFixed(3) + ' m');
+    check('Celebrate mirrors the swing onto the other side',
+      atPart(celeB, 'pelvis').z > 0.025 && soleGap(celeB) < 0.003,
+      'pelvis z ' + atPart(celeB, 'pelvis').z.toFixed(3) + ' m, higher sole '
+      + (soleGap(celeB) * 1000).toFixed(1) + ' mm');
+    /* Between the keyframes too: a solve that only planted the soles at the
+       recorded frames would still let the swing foot float mid-way. */
+    demo.playAction('celebrate');
+    demo.act.playing = false;
+    const cel = demo.actions().celebrate;
+    let float = 0, floatT = 0;
+    for (let t = 0; t <= cel.duration_ms / 1000 + 1e-9; t += 0.05) {
+      demo.act.t = t;
+      const p = K1.actionPose(cel, t);
+      demo.st.joints = p; demo.st.target = p;
+      tick(1);
+      const m = demo.measure();
+      const hi = Math.max(atPart(m, 'footL').low, atPart(m, 'footR').low);
+      if (hi > float) { float = hi; floatT = t; }
+    }
+    check('the swing never lifts a sole off the floor, keyframes or between',
+      float < 0.003,
+      (float * 1000).toFixed(1) + 'mm up at ' + floatT.toFixed(2) + 's');
     demo.playAction('openlegs');
     tick(60);
     const openM = demo.measure();
-    check('Open Legs moves both hips outward without rolling the body',
-      Math.abs(demo.tilt()) < 0.01 && Math.abs(atPart(openM, 'pelvis').z) < 0.01,
-      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(2) + 'deg, pelvis z '
-      + atPart(openM, 'pelvis').z.toFixed(3) + ' m');
+    check('Open Legs moves both hips outward without swinging the pelvis',
+      Math.abs(atPart(openM, 'pelvis').z) < 0.005 && soleGap(openM) < 0.003,
+      'pelvis z ' + atPart(openM, 'pelvis').z.toFixed(3) + ' m, higher sole '
+      + (soleGap(openM) * 1000).toFixed(1) + ' mm');
     demo.stopAction();
 
     /* ---- contact: 'seat' is a floor sit, not a standing solve ---- */

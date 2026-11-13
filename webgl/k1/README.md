@@ -263,10 +263,14 @@ Three things the bytes do not carry, and where they are decided instead:
   then tips and slides the pelvis with the leg chain: a crouch cancels its own
   angles and stays upright, a bow tips over. The same solve has a sideways
   half: when the two hip servos differ (Celebrate, the wave and tilt moves) the
-  weight-bearing sole stays planted and the pelvis rolls and shifts over it, so
-  the difference reads as a hip swing rather than the feet sliding under a
-  still body. When both hips turn outward equally (Open Legs) the stance simply
-  widens and the body stays upright. For an action that says
+  stance under the body changes. A rigid pelvis cannot keep both soles exactly
+  where they stood, and rolling it would lift the hip on the long leg - and
+  with the knees still straight that lifts the foot - so the display keeps the
+  pelvis upright and slides it sideways until the midpoint between the feet is
+  back under the body. Both soles stay on the floor, the splayed foot rocking
+  onto an edge, and the pelvis swings left and right: that is the hip sway, not
+  a foot shuffle. When both hips turn outward equally (Open Legs) the stance
+  simply widens and the pelvis stays centred. For an action that says
   `contact: "hands"`, it instead solves the body pitch for **palms and toes at
   once**, at that action's keyframes, and interpolates the result between them.
   The pitch has to be solved per keyframe rather than live: the same servo
@@ -310,7 +314,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate rolls the body over the planted foot (the hips move, not just the feet) while Open Legs stays upright |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |
