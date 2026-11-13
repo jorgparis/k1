@@ -827,6 +827,34 @@ world(J());
       seatKeys.every((k) => demo.actions()[k] && demo.actions()[k].contact === 'seat'),
       seatKeys.filter((k) => !demo.actions()[k] || demo.actions()[k].contact !== 'seat').join(','));
 
+    /* ---- the camera while an action plays ---- */
+    /* A take is a motion, so the idle orbit must stop. A seated take also
+       wants the profile view: from the front its forward leg fold projects
+       sideways and reads as a hip swing. A view the user chose is kept. */
+    const cam = demo.camera;
+    cam.auto = true;
+    demo.playAction('pushups');
+    check('playing an action stops the idle camera orbit', cam.auto === false);
+    cam.auto = true;
+    cam.yaw = cam.tYaw = -0.2; cam.pitch = cam.tPitch = 0.3; cam.dist = cam.tDist = 2.4;
+    demo.playAction('takeaseat');
+    const profile = demo.cameraPresets[1];
+    check('a seated take switches an orbiting camera to the profile view',
+      Math.abs(cam.tYaw - profile.yaw) < 1e-9 && Math.abs(cam.tPitch - profile.pitch) < 1e-9 &&
+      Math.abs(cam.tDist - profile.dist) < 1e-9);
+    cam.auto = false;
+    cam.yaw = cam.tYaw = -0.2; cam.pitch = cam.tPitch = 0.3; cam.dist = cam.tDist = 2.4;
+    demo.playAction('sit');
+    check('a seated take leaves a manually chosen camera alone',
+      Math.abs(cam.tYaw + 0.2) < 1e-9 && Math.abs(cam.tPitch - 0.3) < 1e-9 &&
+      Math.abs(cam.tDist - 2.4) < 1e-9);
+    cam.auto = true;
+    cam.yaw = cam.tYaw = -0.2; cam.pitch = cam.tPitch = 0.3; cam.dist = cam.tDist = 2.4;
+    demo.playAction('pushups');
+    check('an ordinary action freezes the camera where it is',
+      Math.abs(cam.tYaw + 0.2) < 1e-9 && Math.abs(cam.tPitch - 0.3) < 1e-9 &&
+      Math.abs(cam.tDist - 2.4) < 1e-9);
+
     demo.playAction('takeaseat');
     tick(1);
     const seatFrames = demo.actions().takeaseat.frames;

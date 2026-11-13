@@ -232,6 +232,20 @@
     act.t = 0;
     act.playing = true;
     st.scene = 'ACTION: ' + a.name.toUpperCase();
+    /* An action is a motion, not an idle pose, so stop the slow camera orbit
+       that would otherwise read as the robot turning. A seated take is also
+       best read from the side: from the front its forward leg fold projects
+       onto the screen as a sideways spread. Only do this while the camera is
+       still wandering; a view the user has chosen is left alone. */
+    if (cam.auto) {
+      cam.auto = false;
+      if (a.contact === 'seat') {
+        const p = CAM_PRESETS[1];              // profile: best for pitch joints
+        cam.tYaw = p.yaw; cam.tPitch = p.pitch; cam.tDist = p.dist;
+      } else {
+        cam.tYaw = cam.yaw; cam.tPitch = cam.pitch; cam.tDist = cam.dist;
+      }
+    }
     const pick = document.getElementById('movePick');
     if (pick && pick.value !== key) pick.value = key;
     syncMoveInfo();
@@ -1252,6 +1266,7 @@
   window.K1DEMO = {
     st, JOINTS, PRESETS, applyPreset, poseJSON, nudge, selectJoint,
     act, actions, actionList, playAction, stopAction,
+    camera: cam, cameraPresets: CAM_PRESETS,
     lean: () => bodyLean(),
     /* Where the rig actually ended up, in world space. The harnesses and the
        screenshot probes use this to measure contact - a hand on the floor, a

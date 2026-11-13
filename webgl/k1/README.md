@@ -164,6 +164,13 @@ every one of those is a shallow bow. Change it and every joint scales together.
 | `F` | fullscreen |
 | drag | orbit · wheel: zoom |
 
+Playing any action stops the idle camera orbit, because a slowly turning view
+reads as the robot turning. A seated take (`Take A Seat`, `Sit`, `Stand`, the
+seated looks and the hand show) also switches to preset `2`, the profile view:
+a floor sit folds the legs straight forward, and from the front that fold
+projects sideways and looks like a hip swing. A camera you set yourself is left
+alone, so press `2` again if an earlier drag put you back on a front view.
+
 ## Layout
 
 `k1.html` is generated — edit the files below and re-run the bundler rather
