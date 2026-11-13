@@ -16,7 +16,8 @@
 
    `repeat` and `contact` are playback decisions, not bytes: Push Ups
    stores one pump and the robot pumps three times, and it rests on its
-   palms as well as its toes. */
+   palms as well as its toes. The seated moves rest their body on the
+   floor, so the display seats the pelvis instead of standing on a sole. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -343,6 +344,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "leaves it seated; the pose is transient",
+  "contact": "seat",
   "file": "final/sit.sh",
   "frames": [
    {"t":0.0,"speed":30,"tag":"0b53","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -364,6 +366,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "renews the seated pose; leaves it seated",
+  "contact": "seat",
   "file": "final/sit look left.sh",
   "frames": [
    {"t":0.0,"speed":40,"tag":"0b53","mag":{"leftThigh":104,"leftCalf":25,"leftAnkle":130,"rightThigh":105,"rightCalf":25,"rightAnkle":130,"leftShoulder":20,"rightShoulder":20,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":10,"leftHand":0,"rightArm":10,"rightHand":0,"head":0}},
@@ -382,6 +385,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "renews the seated pose; leaves it seated",
+  "contact": "seat",
   "file": "final/sit look right.sh",
   "frames": [
    {"t":0.0,"speed":40,"tag":"0b53","mag":{"leftThigh":104,"leftCalf":25,"leftAnkle":130,"rightThigh":105,"rightCalf":25,"rightAnkle":130,"leftShoulder":20,"rightShoulder":20,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":10,"leftHand":0,"rightArm":10,"rightHand":0,"head":0}},
@@ -400,6 +404,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "renews the seated pose; leaves it seated",
+  "contact": "seat",
   "file": "final/sit show hand.sh",
   "frames": [
    {"t":0.0,"speed":40,"tag":"0b53","mag":{"leftThigh":104,"leftCalf":25,"leftAnkle":130,"rightThigh":105,"rightCalf":25,"rightAnkle":130,"leftShoulder":20,"rightShoulder":20,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":10,"leftHand":0,"rightArm":10,"rightHand":0,"head":0}},
@@ -421,6 +426,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "assumes it is seated",
+  "contact": "seat",
   "file": "final/stand.sh",
   "frames": [
    {"t":0.0,"speed":30,"tag":"0b53","mag":{"leftThigh":104,"leftCalf":25,"leftAnkle":130,"rightThigh":105,"rightCalf":25,"rightAnkle":130,"leftShoulder":20,"rightShoulder":20,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":10,"leftHand":0,"rightArm":10,"rightHand":0,"head":0}},
@@ -1645,6 +1651,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "contact": "seat",
   "file": "ProAction/Take a seat.sh",
   "frames": [
    {"t":0.0,"speed":30,"tag":"0b4a","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},

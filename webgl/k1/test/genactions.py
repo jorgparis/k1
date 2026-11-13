@@ -19,7 +19,10 @@ Timing provenance, strongest first:
 
 Every entry also keeps ``repeat`` and ``contact`` where the bytes do not say
 them: Push Ups stores one pump and the robot pumps three times, and it rests on
-its palms as well as its toes.
+its palms as well as its toes. The seated moves get ``contact: "seat"`` because
+a floor sit is not held up by flat soles; the display must drop the whole body
+to the floor with the pelvis and legs, not solve a standing pitch from the leg
+chain.
 
     python3 test/genactions.py
     python3 test/genactions.py --k1 /path/to/k1 --out src/actions.js
@@ -54,6 +57,13 @@ def default_k1() -> Path:
 
 DEFAULT_K1 = default_k1()
 EST_MS_PER_RECORD = 700
+
+# Moves whose body is on the floor for at least part of the take. A floor sit
+# cannot be stood on flat soles, so the display needs to know to seat it.
+SEAT_MOVES = {
+    "takeaseat", "sit", "stand",
+    "sitlookleft", "sitlookright", "sitshowhand",
+}
 
 
 def load_k1(root: Path):
@@ -154,7 +164,12 @@ def build(k1: Path) -> tuple[dict, list[str]]:
             entry["reason"] = reason
             entry["frames"] = []
         else:
-            contact = "hands" if key == "pushups" else None
+            if key in SEAT_MOVES:
+                contact = "seat"
+            elif key == "pushups":
+                contact = "hands"
+            else:
+                contact = None
             repeat = 3 if key == "pushups" else 1
             dec = shdecode.decode(path, duration_ms, contact, repeat)
             entry["frames"] = dec["frames"]
@@ -195,7 +210,8 @@ def render(actions: dict, order: list[str]) -> str:
         "",
         "   `repeat` and `contact` are playback decisions, not bytes: Push Ups",
         "   stores one pump and the robot pumps three times, and it rests on its",
-        "   palms as well as its toes. */",
+        "   palms as well as its toes. The seated moves rest their body on the",
+        "   floor, so the display seats the pelvis instead of standing on a sole. */",
         "window.K1ACTIONS = {",
     ]
     for n, key in enumerate(order):

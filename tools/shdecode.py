@@ -63,8 +63,11 @@ the *body* is on the floor, which is a display problem, not a missing byte.
 The one thing a file cannot say is which parts are touching the ground.
 `--contact hands` records that: the action rests on its palms and toes at
 once, so the demo solves the body pitch for two floor contacts instead of
-standing it on flat soles. The decoded data keeps `mag` exactly as the bytes
-are; the flag is a rendering hint, not a rewrite.
+standing it on flat soles. `--contact seat` records a floor sit: the body is
+supported by the pelvis and legs, so the display keeps the torso upright and
+lowers the whole model until its lowest part touches the floor. The decoded
+data keeps `mag` exactly as the bytes are; the flag is a rendering hint, not a
+rewrite.
 
 The other thing a file cannot say is how many times a routine plays its marked
 block. `Push Ups` stores one pump (elbow 40 -> 100 -> 40) and the robot pumps
@@ -295,7 +298,10 @@ def show(dec: dict) -> None:
         for line in over[:8]:
             print("   ", line)
     if dec.get("contact"):
-        print(f'\n  contact: {dec["contact"]} - the demo plants those on the floor')
+        where = ("the body settles onto the floor"
+                 if dec["contact"] == "seat"
+                 else "the demo plants those on the floor")
+        print(f'\n  contact: {dec["contact"]} - {where}')
     if dec.get("repeat"):
         r = dec["repeat"]
         print(f'\n  repeat: records {r["core"][0]}..{r["core"][-1]} played '
@@ -328,9 +334,9 @@ def main(argv=None) -> int:
     ap.add_argument("--duration-ms", type=int, help="override the declared clock")
     ap.add_argument("--json", help="write the decoded keyframes here")
     ap.add_argument("--js", help="write a window.K1ACTIONS module here")
-    ap.add_argument("--contact", choices=("hands",),
-                    help="the pose also rests on its hands, so the demo solves the body "
-                         "pitch for two floor contacts instead of flat feet")
+    ap.add_argument("--contact", choices=("hands", "seat"),
+                    help="what carries the body: 'hands' rests on palms and toes, "
+                         "'seat' is a floor sit with the pelvis and legs down")
     ap.add_argument("--repeat", type=int, default=1, metavar="N",
                     help="play the block byte 29 marks N times (the count is not in the "
                          "file; Push Ups is 3 on the robot)")
@@ -359,9 +365,14 @@ def main(argv=None) -> int:
         body = json.dumps({key: dec}, indent=1)
         note = ""
         if dec.get("contact"):
-            note = ("\n   `contact` is a rendering hint, not a rewrite: this pose rests on\n"
-                    "   its hands as well as its feet, so the demo solves the body pitch\n"
-                    "   for two floor contacts instead of standing it on flat soles.\n")
+            if dec["contact"] == "seat":
+                note = ("\n   `contact` is a rendering hint, not a rewrite: this take sits\n"
+                        "   the body on the floor, so the demo keeps the torso upright and\n"
+                        "   lowers the whole model until its lowest part touches.\n")
+            else:
+                note = ("\n   `contact` is a rendering hint, not a rewrite: this pose rests on\n"
+                        "   its hands as well as its feet, so the demo solves the body pitch\n"
+                        "   for two floor contacts instead of standing it on flat soles.\n")
         if dec.get("repeat"):
             r = dec["repeat"]
             note += ("\n   `repeat` is not in the bytes either: byte 29 marks records\n"

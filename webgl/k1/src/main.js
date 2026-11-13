@@ -669,6 +669,15 @@
   function lowestPalm() {
     return Math.min(soleLow('handL').y, soleLow('handR').y);
   }
+  /* The lowest vertex of any part. A seated action is carried by the pelvis
+     and legs, not only the soles, so its support point has to be allowed to be
+     the calf or the butt. Used only for `contact: 'seat'`, where the whole
+     model is lowered onto whatever is lowest. */
+  function lowestPart() {
+    let low = Infinity;
+    for (const p of parts) low = Math.min(low, soleLow(p.name).y);
+    return low;
+  }
 
   /* Where each sole stands in the neutral pose, measured along the robot's
      heading. The support solve puts the support sole back here, so an action
@@ -695,7 +704,7 @@
      sole the weight is on stays on the floor, and the pelvis tips and slides
      with the leg chain.
 
-     The pitch itself comes from one of two places:
+     The pitch itself comes from one of three places:
 
        feet only (default) - minus the sum of the support leg's pitch servos,
          solved live. That is continuous in the pose, so it needs no smoothing:
@@ -709,7 +718,16 @@
          where the file says what the body is doing, and then interpolated
          between them exactly like the servo magnitudes. See `contactPitch`.
 
-     Either way the sole is then planted and slid back to where it stands in the
+       seated (`contact: 'seat'`) - a floor sit is not held up by flat soles.
+         Solving the standing pitch from the leg chain would tip the torso past
+         horizontal and put its head through the floor, and planting a sole
+         would fold the legs behind the body. The torso therefore stays upright
+         (pitch 0), the pelvis stays over its own origin, and the model is
+         lowered until its lowest part - a sole, a calf, the pelvis or a palm -
+         rests on the floor. That is a display choice, not a servo value: the
+         bytes still own every joint.
+
+     Otherwise the sole is then planted and slid back to where it stands in the
      neutral pose. The caller lifts the whole model only if the *other* foot
      would go through the floor. The clamp stops a nonsense pose (a fall, a
      kick) from spinning the model over. */
@@ -728,6 +746,11 @@
       if (c.weight > 1e-3) {
         pitch += c.weight * (contactSeat(pitch, c.strict) - pitch);
       }
+    }
+    if (act.data && act.data.contact === 'seat') {
+      /* World is still at pitch 0 above; drop it onto its lowest point. */
+      composeWorld(0, 0, 0);
+      return { pitch: 0, tx: 0, ty: -lowestPart() };
     }
     pitch = clamp(pitch, -2.7, 2.7);
     composeWorld(0, pitch, 0);
@@ -868,11 +891,14 @@
     composeWorld(s.ty, s.pitch, s.tx);
     bodyPitch = s.pitch;
     /* Safety net: if the pose puts the other foot - or, in a contact action,
-       a palm - below the floor (a kneel, an asymmetric action, a frame halfway
-       between two touching keyframes), lift the whole model until nothing is
-       under it. The support foot then sits a little high, which is what a real
-       foot does when the other one is on the ground. Display only. */
-    const low = Math.min(lowestSole(), lowestPalm());
+       a palm, or in a seated action any part at all - below the floor (a
+       kneel, an asymmetric action, a frame halfway between two touching
+       keyframes), lift the whole model until nothing is under it. The support
+       point then sits a little high, which is what a real limb does when
+       another part is on the ground. Display only. */
+    const low = act.data && act.data.contact === 'seat'
+      ? lowestPart()
+      : Math.min(lowestSole(), lowestPalm());
     if (low < 0) composeWorld(s.ty - low, s.pitch, s.tx);
   }
 

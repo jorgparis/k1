@@ -263,8 +263,14 @@ Three things the bytes do not carry, and where they are decided instead:
   (`contactSeat`) keeps the palms level with the soles between keyframes: it
   runs in both directions when both keyframes around the frame are contact
   frames, and only when the palm would actually sink when they are not — so the
-  push-off is not dragged back down. No servo count changes — it is geometry,
-  the same kind of correction as the floor drop.
+  push-off is not dragged back down. For an action that says `contact: "seat"`,
+  the standing solve is wrong: a floor sit is carried by the pelvis and legs,
+  not by flat soles. The torso therefore stays upright, the pelvis stays over
+  its own origin, and the whole model is lowered until its lowest part — sole,
+  calf, pelvis or palm — rests on the floor. That is what stops Take A Seat
+  from pitching past horizontal and folding its legs behind the body. No servo
+  count changes — it is geometry, the same kind of correction as the floor
+  drop.
 * **How often a routine repeats** — the file marks the block that repeats but
   never how many times, and the robot's own count is not readable over BLE
   either. `--repeat 3` on Push Ups is the observed behaviour (three pumps, the
@@ -292,7 +298,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, and checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, and checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

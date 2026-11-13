@@ -815,6 +815,65 @@ world(J());
         dy > 0.025, (dy * 100).toFixed(1) + 'cm');
     }
     demo.stopAction();
+
+    /* ---- contact: 'seat' is a floor sit, not a standing solve ---- */
+    /* Take A Seat used to solve the standing flat-sole pitch from its leg
+       chain: at 1.3 s that pitched the torso 108 deg forward and drove the
+       head through the floor, while the seated frame folded the legs behind
+       the body. The seat hint must keep the torso upright, lower the body onto
+       its lowest part, and keep the feet in front of the pelvis. */
+    const seatKeys = ['takeaseat', 'sit', 'stand', 'sitlookleft', 'sitlookright', 'sitshowhand'];
+    check('every seated move carries the floor-seat hint',
+      seatKeys.every((k) => demo.actions()[k] && demo.actions()[k].contact === 'seat'),
+      seatKeys.filter((k) => !demo.actions()[k] || demo.actions()[k].contact !== 'seat').join(','));
+
+    demo.playAction('takeaseat');
+    tick(1);
+    const seatFrames = demo.actions().takeaseat.frames;
+    const seatProbes = [];
+    for (let i = 0; i < seatFrames.length; i++) {
+      seatProbes.push(seatFrames[i].t);
+      if (i + 1 < seatFrames.length) {
+        seatProbes.push((seatFrames[i].t + seatFrames[i + 1].t) / 2);
+      }
+    }
+    const atSeat = (t) => {
+      while (demo.act.playing && demo.act.t < t) tick(1);
+      return demo.measure();
+    };
+    let seatLean = 0, seatFloor = 0;
+    const seatPose = {};
+    for (const t of seatProbes.sort((a, b) => a - b)) {
+      const m = atSeat(t);
+      const lean = demo.lean();
+      if (Math.abs(lean) > Math.abs(seatLean)) seatLean = lean;
+      seatFloor = Math.min(seatFloor, Math.min(...m.map((p) => p.low)));
+      if (Math.abs(t - 1.307) < 1e-6 || Math.abs(t - 4.27) < 1e-6) seatPose[t] = m;
+    }
+    check('Take A Seat keeps the torso near upright (no past-horizontal pitch)',
+      Math.abs(seatLean) < 15 * Math.PI / 180,
+      (seatLean * 180 / Math.PI).toFixed(1) + 'deg');
+    check('no part of Take A Seat goes through the floor',
+      seatFloor >= -0.001, (seatFloor * 1000).toFixed(1) + 'mm');
+
+    const seatPart = (m, n) => m.find((p) => p.name === n);
+    const early = seatPose[1.307], seated = seatPose[4.27];
+    if (early && seated) {
+      const hipX = (m) => seatPart(m, 'pelvis').lowAt[0];
+      const footX = (m) => Math.min(seatPart(m, 'footL').lowAt[0], seatPart(m, 'footR').lowAt[0]);
+      check('mid-descent the feet are in front of the hips, not folded behind them',
+        footX(early) > hipX(early) + 0.15,
+        'foot ' + footX(early).toFixed(2) + ' hip ' + hipX(early).toFixed(2));
+      check('the seated pelvis rests near the floor',
+        seatPart(seated, 'pelvis').low < 0.08,
+        (seatPart(seated, 'pelvis').low * 100).toFixed(1) + 'cm');
+      check('the seated feet are forward of the pelvis (a floor sit)',
+        footX(seated) > hipX(seated) + 0.15,
+        'foot ' + footX(seated).toFixed(2) + ' hip ' + hipX(seated).toFixed(2));
+    } else {
+      check('the seat probe reached the descent and seated keyframes', false);
+    }
+    demo.stopAction();
   }
 }
 
