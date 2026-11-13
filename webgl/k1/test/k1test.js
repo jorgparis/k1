@@ -816,6 +816,44 @@ world(J());
     }
     demo.stopAction();
 
+    /* ---- a hip swing is body roll, not a foot shuffle ---- */
+    /* Celebrate drives its two hip servos in opposite directions while the
+       rest of the legs stay neutral. If the display leaves the pelvis upright
+       and swings the feet, the dance reads as a foot shuffle with no hips. The
+       weight-bearing sole has to stay planted and the body must roll and shift
+       over it. Open Legs drives both hips outward together, which is a stance
+       change and must stay upright. */
+    const atPart = (m, n) => m.find((p) => p.name === n);
+    demo.playAction('celebrate');
+    const celeAt = (t) => {
+      while (demo.act.playing && demo.act.t < t) tick(1);
+      return demo.measure();
+    };
+    const celeA = celeAt(3.059);
+    check('Celebrate rolls the body over the planted foot (a hip swing, not a foot shuffle)',
+      demo.tilt() > 5 * Math.PI / 180 && Math.abs(atPart(celeA, 'pelvis').z) > 0.04,
+      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(1) + 'deg, pelvis z '
+      + atPart(celeA, 'pelvis').z.toFixed(3) + ' m');
+    check('the weight-bearing foot stays planted while the other lifts for the swing',
+      Math.abs(atPart(celeA, 'footR').z - 0.154) < 0.01 && atPart(celeA, 'footR').low < 0.005 &&
+      atPart(celeA, 'footL').low > 0.01,
+      'footR z ' + atPart(celeA, 'footR').z.toFixed(3) + ' low ' + atPart(celeA, 'footR').low.toFixed(3)
+      + ', footL low ' + atPart(celeA, 'footL').low.toFixed(3));
+    const celeB = celeAt(4.962);
+    check('Celebrate mirrors the swing onto the other foot',
+      demo.tilt() < -5 * Math.PI / 180 && atPart(celeB, 'pelvis').z < -0.04 &&
+      atPart(celeB, 'footL').low < 0.005 && atPart(celeB, 'footR').low > 0.01,
+      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(1) + 'deg, pelvis z '
+      + atPart(celeB, 'pelvis').z.toFixed(3) + ' m');
+    demo.playAction('openlegs');
+    tick(60);
+    const openM = demo.measure();
+    check('Open Legs moves both hips outward without rolling the body',
+      Math.abs(demo.tilt()) < 0.01 && Math.abs(atPart(openM, 'pelvis').z) < 0.01,
+      'tilt ' + (demo.tilt() * 180 / Math.PI).toFixed(2) + 'deg, pelvis z '
+      + atPart(openM, 'pelvis').z.toFixed(3) + ' m');
+    demo.stopAction();
+
     /* ---- contact: 'seat' is a floor sit, not a standing solve ---- */
     /* Take A Seat used to solve the standing flat-sole pitch from its leg
        chain: at 1.3 s that pitched the torso 108 deg forward and drove the
