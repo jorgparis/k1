@@ -960,6 +960,189 @@ world(J());
       check('the seat probe reached the descent and seated keyframes', false);
     }
     demo.stopAction();
+
+    /* ---- flips: the name says which way the body turns ---- */
+    /* The recorded bytes carry no root rotation and no push-off impulse, so a
+       flip cannot be drawn by planting a sole. `flip` on the action is the
+       display hint: +1 rolls backwards onto the back, -1 forwards onto the
+       front. The root is a free rigid-body solve from the same pose clock, and
+       the settle after the last keyframe is display time, not file time. */
+    const flipKeys = demo.actionList().filter((k) => demo.actions()[k].flip).sort();
+    check('only the three named flips carry a direction, with the right sign',
+      flipKeys.join(',') === 'backflip,frontflip,keeprollingbackward' &&
+      demo.actions().backflip.flip === 1 &&
+      demo.actions().frontflip.flip === -1 &&
+      demo.actions().keeprollingbackward.flip === 1,
+      flipKeys.map((k) => k + ':' + demo.actions()[k].flip).join(' '));
+    check('an ordinary action has no flip track and no flip hint',
+      demo.actions().pushups.flip === undefined && demo.flip('pushups') === null);
+
+    const back = demo.actions().backflip;
+    const track = demo.flip('backflip');
+    check('the flip root is solved once and cached on the action',
+      demo.flip('backflip') === track && track.n > 1 &&
+      Math.abs(track.dt - 1 / 120) < 1e-12 && track.settle > 0,
+      track.n + ' samples at ' + track.dt.toFixed(5) + 's');
+
+    const flipAt = (key, t) => {
+      const a = demo.actions()[key];
+      demo.playAction(key);
+      demo.act.playing = false;
+      demo.act.t = t;
+      const p = K1.actionPose(a, t);
+      demo.st.joints = p; demo.st.target = p;
+      tick(1);
+      return demo.measure();
+    };
+    const body = ['pelvis', 'torso', 'head', 'thighL', 'thighR', 'calfL', 'calfR',
+      'ankleL', 'ankleR', 'footL', 'footR'];
+    /* Walk the whole solved take, keyframes and settle alike. The arms are
+       deliberately not checked: they are allowed under the opaque floor while
+       the body rolls, but no part that carries it may sink in. */
+    const flipPass = (key) => {
+      const a = demo.actions()[key];
+      const tr = demo.flip(key);
+      demo.playAction(key);
+      demo.act.playing = false;
+      let firstHead = -1, headLow = 9, bodyLow = 9, bodyName = '';
+      let peak = 0, peakT = 0;
+      for (let t = 0; t <= tr.dur + tr.settle + 1e-9; t += 1 / 60) {
+        demo.act.t = t;
+        const p = K1.actionPose(a, t);
+        demo.st.joints = p; demo.st.target = p;
+        tick(1);
+        const m = demo.measure();
+        const head = m.find((q) => q.name === 'head').low;
+        if (head < headLow) headLow = head;
+        if (firstHead < 0 && head <= 0.002) firstHead = t;
+        for (const n of body) {
+          const lo = m.find((q) => q.name === n).low;
+          if (lo < bodyLow) { bodyLow = lo; bodyName = n; }
+        }
+        const lean = demo.lean();
+        if (Math.abs(lean) > Math.abs(peak)) { peak = lean; peakT = t; }
+      }
+      return { a, tr, firstHead, headLow, bodyLow, bodyName, peak, peakT };
+    };
+    const settleOf = (key) => {
+      const a = demo.actions()[key];
+      return a.duration_ms / 1000 + demo.flip(key).settle;
+    };
+
+    /* Back Flip is the gesture the robot was asked to draw: lean back, put the
+       head on the floor, roll over the head onto the back. */
+    const b1 = flipAt('backflip', 1.0);
+    check('Back Flip leans backwards before its feet leave the floor',
+      demo.lean() > 10 * Math.PI / 180 && b1.find((p) => p.name === 'pelvis').x < -0.05,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
+      + b1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+    const bp = flipPass('backflip');
+    check('Back Flip puts its head on the floor during the roll',
+      bp.headLow <= 0.002 && bp.firstHead > 0.5 && bp.firstHead < 3,
+      'head low ' + (bp.headLow * 1000).toFixed(1) + ' mm, first touch at '
+      + bp.firstHead.toFixed(2) + 's');
+    check('Back Flip rolls past the head onto its back (> 120 deg of pitch)',
+      bp.peak > 120 * Math.PI / 180,
+      (bp.peak * 180 / Math.PI).toFixed(1) + 'deg at ' + bp.peakT.toFixed(2) + 's');
+    check('no body part of Back Flip goes through the floor, keyframes or settle',
+      bp.bodyLow >= -0.002, (bp.bodyLow * 1000).toFixed(1) + ' mm (' + bp.bodyName + ')');
+    const bend = flipAt('backflip', settleOf('backflip'));
+    check('Back Flip settles flat on its back, head clear of the floor',
+      demo.lean() > 75 * Math.PI / 180 && demo.lean() < 95 * Math.PI / 180 &&
+      bend.find((p) => p.name === 'torso').low < 0.01 &&
+      bend.find((p) => p.name === 'head').low > 0.03 &&
+      Math.max(bend.find((p) => p.name === 'footL').low,
+        bend.find((p) => p.name === 'footR').low) < 0.02,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, torso '
+      + (bend.find((p) => p.name === 'torso').low * 1000).toFixed(0) + ' mm, head '
+      + (bend.find((p) => p.name === 'head').low * 1000).toFixed(0) + ' mm');
+
+    /* Front Flip is the same solve mirrored in X: it must lean forward and
+       travel forward, not just tilt the other way. Its recorded take does not
+       stand back up, so the settle leaves it crouched forward on its feet. */
+    flipAt('frontflip', 1.0);
+    const f1 = demo.measure();
+    check('Front Flip leans forwards and travels forwards (the mirror in X)',
+      demo.lean() < -45 * Math.PI / 180 &&
+      f1.find((p) => p.name === 'pelvis').x > 0.05,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
+      + f1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+    const fp = flipPass('frontflip');
+    check('Front Flip puts its head on the floor too',
+      fp.headLow <= 0.002 && fp.firstHead > 0.5 && fp.firstHead < 3,
+      'head low ' + (fp.headLow * 1000).toFixed(1) + ' mm, first touch at '
+      + fp.firstHead.toFixed(2) + 's');
+    check('no body part of Front Flip goes through the floor either',
+      fp.bodyLow >= -0.002, (fp.bodyLow * 1000).toFixed(1) + ' mm (' + fp.bodyName + ')');
+    flipAt('frontflip', settleOf('frontflip'));
+    const fend = demo.measure();
+    check('Front Flip comes to rest forward, up on its feet, head clear',
+      demo.lean() < -70 * Math.PI / 180 && demo.lean() > -100 * Math.PI / 180 &&
+      Math.max(fend.find((p) => p.name === 'footL').low,
+        fend.find((p) => p.name === 'footR').low) < 0.02 &&
+      fend.find((p) => p.name === 'head').low > 0.08,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (fend.find((p) => p.name === 'head').low * 1000).toFixed(0) + ' mm');
+
+    /* Keep Rolling Backward is a long backward roll: the head reaches the floor
+       mid-take and the body ends supine. */
+    const k1 = flipAt('keeprollingbackward', 1.0);
+    check('Keep Rolling Backward leans backwards',
+      demo.lean() > 10 * Math.PI / 180,
+      (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
+      + k1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+    const kp = flipPass('keeprollingbackward');
+    check('Keep Rolling Backward rolls its head onto the floor',
+      kp.headLow <= 0.002 && kp.firstHead > 3 && kp.firstHead < 12,
+      'head low ' + (kp.headLow * 1000).toFixed(1) + ' mm, first touch at '
+      + kp.firstHead.toFixed(2) + 's');
+    check('no body part of Keep Rolling Backward goes through the floor',
+      kp.bodyLow >= -0.002, (kp.bodyLow * 1000).toFixed(1) + ' mm (' + kp.bodyName + ')');
+
+    /* The settle is part of the display, not of the measured file. */
+    check('the flip track is deterministic: a seek is the same however it is reached',
+      (() => {
+        flipAt('backflip', 2.0); const a = demo.lean();
+        flipAt('backflip', 4.0);
+        flipAt('backflip', 2.0); const b = demo.lean();
+        return a === b;
+      })());
+    demo.playAction('backflip');
+    let frames = 0;
+    while (demo.act.playing && frames < 900) { tick(1); frames++; }
+    const doneT = settleOf('backflip');
+    check('a flip plays through the settle and then holds, instead of stopping at the file end',
+      demo.act.playing === false && demo.act.key === 'backflip' &&
+      Math.abs(demo.act.t - doneT) < 1e-9,
+      't=' + demo.act.t + ' expected ' + doneT.toFixed(3));
+    const heldLean = demo.lean();
+    tick(1);
+    check('the settled pose survives the next frame (no snap upright)',
+      demo.act.key === 'backflip' && Math.abs(demo.lean() - heldLean) < 1e-9 &&
+      heldLean > 75 * Math.PI / 180,
+      (heldLean * 180 / Math.PI).toFixed(1) + 'deg');
+    const info = opts.els['moveInfo'];
+    check('the readout counts only the file clock, not the settle',
+      info && /6\.47 \/ 6\.47s/.test(info.textContent), info && info.textContent);
+    demo.applyPreset('neutral');
+    tick(2);
+    check('a preset takes the body back from the settled flip',
+      demo.act.key === null && Math.abs(demo.lean()) < 0.02,
+      (demo.lean() * 180 / Math.PI).toFixed(2) + 'deg');
+
+    cam.auto = true;
+    demo.playAction('backflip');
+    check('a flip switches an orbiting camera to the profile view',
+      cam.auto === false && Math.abs(cam.tYaw - profile.yaw) < 1e-9 &&
+      Math.abs(cam.tPitch - profile.pitch) < 1e-9 &&
+      Math.abs(cam.tDist - profile.dist) < 1e-9);
+    cam.auto = false;
+    cam.yaw = cam.tYaw = -0.2; cam.pitch = cam.tPitch = 0.3; cam.dist = cam.tDist = 2.4;
+    demo.playAction('backflip');
+    check('a flip leaves a manually chosen camera alone',
+      Math.abs(cam.tYaw + 0.2) < 1e-9 && Math.abs(cam.tPitch - 0.3) < 1e-9 &&
+      Math.abs(cam.tDist - 2.4) < 1e-9);
+    demo.stopAction();
   }
 }
 

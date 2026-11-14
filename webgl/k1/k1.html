@@ -1787,7 +1787,10 @@ void main(){
    `repeat` and `contact` are playback decisions, not bytes: Push Ups
    stores one pump and the robot pumps three times, and it rests on its
    palms as well as its toes. The seated moves rest their body on the
-   floor, so the display seats the pelvis instead of standing on a sole. */
+   floor, so the display seats the pelvis instead of standing on a sole.
+   `flip` is the same kind of display hint: a script stores servo angles,
+   never a root spin, so +1 means roll backwards onto the back and -1
+   means roll forwards onto the front. No decoded frame is changed. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -2283,6 +2286,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": 1,
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":0.0,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -2623,6 +2627,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": -1,
   "file": "ProAction/front flip.sh",
   "frames": [
    {"t":0.0,"speed":35,"tag":"fcfc","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -2705,6 +2710,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": 1,
   "file": "ProAction/keep rolling backward.sh",
   "frames": [
    {"t":0.0,"speed":30,"tag":"0b21","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -5057,13 +5063,14 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     act.playing = true;
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     /* An action is a motion, not an idle pose, so stop the slow camera orbit
-       that would otherwise read as the robot turning. A seated take is also
-       best read from the side: from the front its forward leg fold projects
-       onto the screen as a sideways spread. Only do this while the camera is
-       still wandering; a view the user has chosen is left alone. */
+       that would otherwise read as the robot turning. A seated take and a flip
+       are also best read from the side: from the front the forward leg fold
+       projects onto the screen as a sideways spread, and a flip turns in the
+       screen plane only when the view is square to it. Only do this while the
+       camera is still wandering; a view the user has chosen is left alone. */
     if (cam.auto) {
       cam.auto = false;
-      if (a.contact === 'seat') {
+      if (a.contact === 'seat' || a.flip) {
         const p = CAM_PRESETS[1];              // profile: best for pitch joints
         cam.tYaw = p.yaw; cam.tPitch = p.pitch; cam.tDist = p.dist;
       } else {
@@ -5270,7 +5277,10 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     let text = moveClockText(a);
     if (a.note) text += ' · ' + a.note;
     if (act.data === a && a.duration_ms) {
-      const at = act.t.toFixed(2) + ' / ' + (a.duration_ms / 1000).toFixed(2) + 's';
+      /* The flip's settle is display time, not part of the measured take, so
+         the readout counts only up to the end of the file. */
+      const shown = Math.min(act.t, a.duration_ms / 1000);
+      const at = shown.toFixed(2) + ' / ' + (a.duration_ms / 1000).toFixed(2) + 's';
       text = act.playing ? at + ' · ' + a.frames.length + ' keyframes' : at + ' · held';
     }
     info.textContent = text;
@@ -5425,12 +5435,19 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
        them through the servo ease would flatten the arm pumps. */
     if (act.playing && act.data) {
       act.t += dt;
-      if (act.t * 1000 >= act.data.duration_ms) {
-        act.t = act.data.duration_ms / 1000;
+      const done = act.data.duration_ms / 1000 +
+        (act.data.flip ? FLIP_SETTLE : 0);
+      if (act.t >= done) {
+        act.t = done;
         const end = K1.actionPose(act.data, act.t);
         st.target = end;
         st.joints = end;
-        stopAction();
+        /* A flip does not hand the robot back at neutral: the take ends lying
+           on its back (or front), and that is the pose the body is in. Keep
+           the action data so the root keeps the settled pitch and position;
+           the user takes over with a slider, a preset or another action. */
+        if (act.data.flip) act.playing = false;
+        else stopAction();
         syncMoveInfo();
       } else {
         const now = K1.actionPose(act.data, act.t);
@@ -5543,7 +5560,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      sole the weight is on stays on the floor, and the pelvis tips and slides
      with the leg chain.
 
-     The pitch itself comes from one of three places:
+     The pitch itself comes from one of four places:
 
        feet only (default) - minus the sum of the support leg's pitch servos,
          solved live. That is continuous in the pose, so it needs no smoothing:
@@ -5566,6 +5583,11 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
          rests on the floor. That is a display choice, not a servo value: the
          bytes still own every joint.
 
+       flips (`flip` on the action) - a flipping body is not standing on
+         anything, so none of the solves above apply. The root is a free
+         rigid-body track computed once for the whole take; see the flip block
+         below. It overrides the other three for that action.
+
      The same solve has a sideways half. The pelvis has no roll servo and the
      legs have no lateral joint except hip abduction, so when the two hip
      servos turn by different amounts the stance itself changes: the foot of
@@ -5584,6 +5606,13 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      would go through the floor. The clamp stops a nonsense pose (a fall, a
      kick) from spinning the model over. */
   function support() {
+    /* A flip has already left the floor. Its root is not solved by planting a
+       sole: it is the free rigid-body track below, measured once from the same
+       pose the file plays. */
+    if (act.data && act.data.flip) {
+      const s = flipSample(flipTrack(act.data), act.t);
+      return { pitch: s.pitch, tx: s.px, tz: 0, ty: s.py - D.hipH };
+    }
     const ref = supportRef();
     composeWorld(0, 0, 0);
     const lL = soleLow('footL'), lR = soleLow('footR');
@@ -5622,6 +5651,307 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     composeWorld(0, pitch, tx, tz);
     const low = Math.min(soleLow('footL').y, soleLow('footR').y);
     return { pitch, tx, tz, ty: -low };
+  }
+
+  /* ---------------------------------------------------------------- flips */
+  /* A flip is the one action the standing solve cannot draw. The bytes say what
+     every servo does and stop there: there is no root translation, no root
+     rotation and no push-off impulse in the file, so the pose alone cannot say
+     whether the body stands, sits or turns over. The action's own name is the
+     only thing that does, and `flip` (generated into `actions.js`) records it:
+
+         +1  roll backwards, onto the back
+         -1  roll forwards, onto the front
+
+     So the root is not an authored pitch curve. At every instant the posed
+     robot is one planar shape; its mass, centre of mass and inertia come from
+     the servo-driven parts, and gravity plus the floor decide how the root
+     moves. The prescribed limb motion still carries angular momentum - a tuck
+     really does start a spin - through `hrel`, and contact impulses with
+     Coulomb friction do the rest. Nothing in the track is read back from wall
+     time: it depends only on the action, so a deep link can seek to any second.
+
+     Two honest limits, both display decisions rather than missing bytes:
+
+       - the arms are not part of the contact shape. Their servos are position-
+         controlled print, not free limbs: on the real robot a hand can press on
+         the floor without moving the pelvis. Leaving them in the rigid body
+         made a swinging hand pole-vault the whole robot into a second roll.
+         Anything below the floor is hidden by the floor plane, so the price is
+         only that a forearm can pass under it during the tumble.
+       - the model is about a metre tall where the K1 is 349 mm. Gravity is real
+         9.81, not scaled to the model, because the measured keyframe clock owns
+         the timing; the root only has to fall plausibly between those beats.
+
+     The solve is the same for a forward flip: its track is the backward one
+     mirrored in X, which is exactly what `flip: -1` asks for. The bytes cannot
+     tell the two apart, so the name does - and the harness checks the mirror. */
+  const FLIP_DT = 1 / 120;
+  const FLIP_G = 9.81;
+  const FLIP_MU = 0.8;
+  /* After the file's last keyframe the pose is held, but the body is usually
+     still a couple of centimetres up and a few degrees short of flat. Let the
+     same solve run on for a moment on the final pose so the robot comes to
+     rest on the floor instead of freezing in the air. Display only; the
+     action's measured clock is unchanged. */
+  const FLIP_SETTLE = 1.5;
+  /* The parts that can carry the body on the floor. The arms are deliberately
+     absent; see above. */
+  const FLIP_BODY = [
+    'pelvis', 'torso', 'head',
+    'thighL', 'thighR', 'calfL', 'calfR', 'ankleL', 'ankleR', 'footL', 'footR'
+  ];
+  const flipV = new Float32Array(4);
+  let flipMass = null;
+
+  /* Convex hull of a part's vertices projected onto X/Y, in the part's own
+     frame. The body only rotates about Z, so this projection is exact: a hull
+     vertex is the lowest point of that part for every pitch. */
+  function flipHull(pts) {
+    pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of pts) {
+      while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+      lo.push(p);
+    }
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const p = pts[i];
+      while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop();
+      up.push(p);
+    }
+    lo.pop(); up.pop();
+    return lo.concat(up);
+  }
+
+  /* One static property per part: mass from the bounding box (density 1), its
+     centre there, and the plate inertia about that centre. This is the only
+     estimated number in the solve - the geometry and every angle are the
+     demo's own - and it is uniform, which is why the numbers below are
+     ratios, not kilograms. */
+  function flipBodies() {
+    if (flipMass) return flipMass;
+    const list = parts.map((p) => {
+      const g = p.geo.pos;
+      let mnx = Infinity, mny = Infinity, mnz = Infinity;
+      let mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      const pts = [];
+      for (let i = 0; i < g.length; i += 3) {
+        const x = g[i], y = g[i + 1], z = g[i + 2];
+        pts.push([x, y]);
+        if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+        if (y < mny) mny = y; if (y > mxy) mxy = y;
+        if (z < mnz) mnz = z; if (z > mxz) mxz = z;
+      }
+      const w = mxx - mnx, h = mxy - mny, d = mxz - mnz;
+      const m = Math.max(1e-7, w * h * d);
+      return {
+        m,
+        c: [(mnx + mxx) / 2, (mny + mxy) / 2],
+        I: m * (w * w + h * h) / 12,
+        hull: flipHull(pts),
+        contact: FLIP_BODY.indexOf(p.name) >= 0
+      };
+    });
+    flipMass = { list, M: list.reduce((s, q) => s + q.m, 0) };
+    return flipMass;
+  }
+
+  /* The shape at one instant, expressed in the pelvis's own frame: every part
+     centre, every part angle, and the contact hulls. */
+  function flipShape(action, t) {
+    const { list, M } = flipBodies();
+    K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+    composeWorld(0, 0, 0);
+    const cs = [], phis = [], hulls = [];
+    let bx = 0, by = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i], q = list[i], w = p.world;
+      M4.xformPoint(flipV, w, q.c[0], q.c[1], 0);
+      const cx = flipV[0], cy = flipV[1] - D.hipH;
+      cs.push([cx, cy]);
+      phis.push(Math.atan2(w[1], w[0]));
+      if (q.contact) {
+        hulls.push({
+          i,
+          pts: q.hull.map((h) => {
+            M4.xformPoint(flipV, w, h[0], h[1], 0);
+            return [flipV[0], flipV[1] - D.hipH];
+          })
+        });
+      }
+      bx += q.m * cx; by += q.m * cy;
+    }
+    bx /= M; by /= M;
+    let IC = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const dx = cs[i][0] - bx, dy = cs[i][1] - by;
+      IC += list[i].I + list[i].m * (dx * dx + dy * dy);
+    }
+    return { cs, phis, hulls, cbar: [bx, by], IC };
+  }
+
+  /* The internal motion's angular momentum, about the system's centre of mass.
+     The linear part of the limb velocity is not fed to the contacts (the servo
+     pushes the floor without dragging the body), but the mass moving round the
+     centre is real and is what turns a crouch into a spin. */
+  function flipInterior(action, t, dt) {
+    const { list, M } = flipBodies();
+    const a = flipShape(action, t - dt);
+    const b = flipShape(action, t + dt);
+    const mid = flipShape(action, t);
+    const cdot = [], phidot = [];
+    let ux = 0, uy = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const vx = (b.cs[i][0] - a.cs[i][0]) / (2 * dt);
+      const vy = (b.cs[i][1] - a.cs[i][1]) / (2 * dt);
+      cdot.push([vx, vy]);
+      phidot.push((b.phis[i] - a.phis[i]) / (2 * dt));
+      ux += list[i].m * vx; uy += list[i].m * vy;
+    }
+    ux /= M; uy /= M;
+    let hrel = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const rx = mid.cs[i][0] - mid.cbar[0], ry = mid.cs[i][1] - mid.cbar[1];
+      hrel += list[i].I * phidot[i] +
+        list[i].m * (rx * (cdot[i][1] - uy) - ry * (cdot[i][0] - ux));
+    }
+    return { mid, hrel };
+  }
+
+  /* Integrate the whole take once, at a fixed step, and keep the root track.
+     The solver is sequential-impulse: normal impulses stop the contact points
+     sinking, Coulomb friction caps the tangential one, and a small positional
+     correction keeps the discrete step from parking the body a few millimetres
+     under the floor. The final sample is nudged up by exactly the residual, so
+     the rendered track never penetrates at all. */
+  function flipSolve(action) {
+    const { M } = flipBodies();
+    const dur = action.duration_ms / 1000;
+    const simDur = dur + FLIP_SETTLE;
+    const dt = FLIP_DT;
+    const n = Math.ceil(simDur / dt) + 1;
+    const pitch = new Float64Array(n), px = new Float64Array(n), py = new Float64Array(n);
+    const keep = parts.map((p) => [p.rot[0], p.rot[1], p.rot[2]]);
+    const yaw = st.yaw;
+    st.yaw = 0;                       // the track is in the robot's own frame
+
+    const first = flipShape(action, 0);
+    let Cx = 0, Cy = D.hipH + first.cbar[1];
+    let Vx = 0, Vy = 0, L = 0, th = 0;
+
+    for (let s = 0; s < n; s++) {
+      const t = Math.min(simDur, s * dt);
+      const iv = flipInterior(action, Math.max(1e-4, t), dt);
+      const mid = iv.mid;
+      const IC = Math.max(1e-6, mid.IC);
+      const omega = (L - iv.hrel) / IC;
+
+      const c = Math.cos(th), sn = Math.sin(th);
+      const rot = (x, y) => [x * c - y * sn, x * sn + y * c];
+      const contacts = [];
+      for (const hb of mid.hulls) {
+        for (const cp of hb.pts) {
+          const r = rot(cp[0] - mid.cbar[0], cp[1] - mid.cbar[1]);
+          const wy = Cy + r[1];
+          if (wy < 0.002) contacts.push({ r, wy });
+        }
+      }
+      let om = omega;
+      for (let it = 0; it < 14; it++) {
+        for (const ct of contacts) {
+          const r = ct.r;
+          const vpx = Vx - om * r[1];
+          const vpy = Vy + om * r[0];
+          const pen = Math.max(0, -ct.wy);
+          const target = pen > 0 ? Math.min(0.4, 0.25 * pen / dt) : 0;
+          let jn = (target - vpy) / (1 / M + r[0] * r[0] / IC);
+          if (jn <= 0) continue;
+          jn = Math.min(jn, 50);
+          Vy += jn / M; L += r[0] * jn; om += r[0] * jn / IC;
+          const vpx2 = Vx - om * r[1];
+          const jt0 = -vpx2 / (1 / M + r[1] * r[1] / IC);
+          const jt = Math.max(-FLIP_MU * jn, Math.min(FLIP_MU * jn, jt0));
+          Vx += jt / M; L += -r[1] * jt; om += -r[1] * jt / IC;
+        }
+      }
+
+      Vy -= FLIP_G * dt;
+      Cx += Vx * dt; Cy += Vy * dt; th += om * dt;
+
+      /* Positional correction: lift the COM by most of the deepest penetration.
+         Going all the way can chatter, so leave a tenth for the impulse solve.
+         The body has turned during the step, so this uses the new angle. */
+      const c2 = Math.cos(th), s2 = Math.sin(th);
+      let low = Infinity;
+      for (const hb of mid.hulls) {
+        for (const cp of hb.pts) {
+          low = Math.min(low, Cy + (cp[0] - mid.cbar[0]) * s2 + (cp[1] - mid.cbar[1]) * c2);
+        }
+      }
+      if (low < -1e-5) Cy -= low * 0.9;
+
+      let ppx = Cx - (mid.cbar[0] * c2 - mid.cbar[1] * s2);
+      let ppy = Cy - (mid.cbar[0] * s2 + mid.cbar[1] * c2);
+      /* Remove the last sliver of penetration exactly; it is a render cleanup,
+         not part of the dynamics, and it is deterministic like everything else.
+         This is measured from the pelvis origin, not the centre of mass. */
+      let rest = Infinity;
+      for (const hb of mid.hulls) {
+        for (const cp of hb.pts) {
+          rest = Math.min(rest, ppy + cp[0] * s2 + cp[1] * c2);
+        }
+      }
+      if (rest < 0) ppy -= rest;
+
+      pitch[s] = th; px[s] = ppx; py[s] = ppy;
+    }
+
+    st.yaw = yaw;
+    parts.forEach((p, i) => {
+      p.rot[0] = keep[i][0]; p.rot[1] = keep[i][1]; p.rot[2] = keep[i][2];
+    });
+
+    /* Which way did the free solve actually turn? The name is the tie-breaker.
+       The natural answer for every flip on the card is backwards; a front flip
+       is the same track reflected in X, which is also a mirror of where the
+       body ends up. */
+    let ext = 0;
+    for (let i = 0; i < n; i++) if (Math.abs(pitch[i]) > Math.abs(ext)) ext = pitch[i];
+    const natural = ext < 0 ? -1 : 1;
+    return {
+      dt, n, pitch, px, py, dur, settle: FLIP_SETTLE,
+      sign: (action.flip < 0 ? -1 : 1) === natural ? 1 : -1
+    };
+  }
+
+  function flipTrack(action) {
+    if (!action.__flip || action.__flip.frames !== action.frames) {
+      action.__flip = flipSolve(action);
+      action.__flip.frames = action.frames;
+    }
+    return action.__flip;
+  }
+
+  /* Linear between samples. Seeking is exact because the track is a function
+     of the action's clock alone, never of how it was reached. */
+  function flipSample(track, t) {
+    const f = clamp(t / track.dt, 0, track.n - 1);
+    const i = Math.min(track.n - 2, Math.floor(f)), u = f - i;
+    const s = track.sign;
+    return {
+      pitch: s * (track.pitch[i] + (track.pitch[i + 1] - track.pitch[i]) * u),
+      px: s * (track.px[i] + (track.px[i + 1] - track.px[i]) * u),
+      py: track.py[i] + (track.py[i + 1] - track.py[i]) * u
+    };
+  }
+
+  /* The lowest point of the parts the solve put on the floor. Used by the
+     safety net instead of the palms, which are allowed under the floor here. */
+  function lowestFlipBody() {
+    let low = Infinity;
+    for (const n of FLIP_BODY) low = Math.min(low, soleLow(n).y);
+    return low;
   }
 
   /* The body pitch that puts the lowest palm at the same height as the lowest
@@ -5756,14 +6086,17 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     composeWorld(s.ty, s.pitch, s.tx, s.tz);
     bodyPitch = s.pitch;
     /* Safety net: if the pose puts the other foot - or, in a contact action,
-       a palm, or in a seated action any part at all - below the floor (a
-       kneel, an asymmetric action, a frame halfway between two touching
-       keyframes), lift the whole model until nothing is under it. The support
-       point then sits a little high, which is what a real limb does when
-       another part is on the ground. Display only. */
-    const low = act.data && act.data.contact === 'seat'
-      ? lowestPart()
-      : Math.min(lowestSole(), lowestPalm());
+       a palm - below the floor (a kneel, an asymmetric action, a frame halfway
+       between two touching keyframes), lift the whole model until nothing is
+       under it. The support point then sits a little high, which is what a real
+       limb does when another part is on the ground. A flip is the exception:
+       its arms are allowed under the floor while the body rolls, so only the
+       parts the flip solve actually put on the floor count. Display only. */
+    const low = act.data && act.data.flip
+      ? lowestFlipBody()
+      : act.data && act.data.contact === 'seat'
+        ? lowestPart()
+        : Math.min(lowestSole(), lowestPalm());
     if (low < 0) composeWorld(s.ty - low, s.pitch, s.tx, s.tz);
   }
 
@@ -6078,7 +6411,11 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     if (!playAction(decodeURIComponent(h[1]))) return false;
     const at = Number(h[2]);
     if (h[2] && Number.isFinite(at)) {
-      act.t = clamp(at, 0, act.data.duration_ms / 1000);
+      /* A flip's track runs on past the file's end so the body can settle;
+         seeking there is allowed, and seeking exactly at the file's end still
+         works because the sampler clamps to the last sample. */
+      const lim = act.data.duration_ms / 1000 + (act.data.flip ? FLIP_SETTLE : 0);
+      act.t = clamp(at, 0, lim);
       const p = K1.actionPose(act.data, act.t);
       st.target = p;
       st.joints = p;
@@ -6119,6 +6456,13 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     act, actions, actionList, playAction, stopAction,
     camera: cam, cameraPresets: CAM_PRESETS,
     lean: () => bodyLean(),
+    /* The solved root track of a flip, or null for an ordinary action. The
+       harnesses use it to check that the name drives the roll and that a seek
+       to a given second is the same track however it was reached. */
+    flip: (key) => {
+      const a = actions()[key];
+      return a && a.flip ? flipTrack(a) : null;
+    },
     /* Where the rig actually ended up, in world space. The harnesses and the
        screenshot probes use this to measure contact - a hand on the floor, a
        sole on the floor - instead of looking at pixels. */

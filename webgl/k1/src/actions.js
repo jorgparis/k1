@@ -17,7 +17,10 @@
    `repeat` and `contact` are playback decisions, not bytes: Push Ups
    stores one pump and the robot pumps three times, and it rests on its
    palms as well as its toes. The seated moves rest their body on the
-   floor, so the display seats the pelvis instead of standing on a sole. */
+   floor, so the display seats the pelvis instead of standing on a sole.
+   `flip` is the same kind of display hint: a script stores servo angles,
+   never a root spin, so +1 means roll backwards onto the back and -1
+   means roll forwards onto the front. No decoded frame is changed. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -513,6 +516,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": 1,
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":0.0,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -853,6 +857,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": -1,
   "file": "ProAction/front flip.sh",
   "frames": [
    {"t":0.0,"speed":35,"tag":"fcfc","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -935,6 +940,7 @@ window.K1ACTIONS = {
   "measured": true,
   "available": true,
   "note": "",
+  "flip": 1,
   "file": "ProAction/keep rolling backward.sh",
   "frames": [
    {"t":0.0,"speed":30,"tag":"0b21","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},

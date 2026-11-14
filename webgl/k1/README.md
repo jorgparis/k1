@@ -250,7 +250,7 @@ wrong: a robot lying face down has its legs straight, and straight is the
 thighs' neutral. The block reads as a push-up only once the *body* is on the
 floor, which is a display problem, not a missing byte.
 
-Three things the bytes do not carry, and where they are decided instead:
+Four things the bytes do not carry, and where they are decided instead:
 
 * **Direction** — the file only says how far, never which way. `K1.ACTION_DIR`
   in `src/k1.js` is one table of signs, chosen to agree with the presets that
@@ -287,6 +287,28 @@ Three things the bytes do not carry, and where they are decided instead:
   from pitching past horizontal and folding its legs behind the body. No servo
   count changes — it is geometry, the same kind of correction as the floor
   drop.
+* **How a flip leaves the floor** — Back Flip, Front Flip and Keep Rolling
+  Backward carry no root translation, no root rotation and no push-off impulse,
+  so the pose alone cannot say which way the body turns. `flip` in
+  `src/actions.js` is the display hint generated from the action name: `+1`
+  rolls backwards onto the back, `-1` forwards onto the front. The root is then
+  solved, not authored. Every part's mass, centre and inertia come from the
+  model's own geometry; gravity plus sequential-impulse floor contacts with
+  Coulomb friction integrate one planar track for the whole take, and the
+  angular momentum the servo-driven tuck carries (`hrel`) is what starts the
+  spin. The solve runs at 1/120 s: at 1/60 s the contact choice is chaotic, and
+  a 1e-7 change flipped the outcome. The arms are excluded from the contact
+  shape — a swinging hand otherwise pole-vaults the body into a second roll,
+  and the opaque floor hides a forearm that passes through it. After the file's
+  last keyframe the pose is held and the same solve runs on for
+  `FLIP_SETTLE = 1.5 s` so the body settles onto the floor, not in mid-air; the
+  readout and deep links still count only the measured file clock. When
+  playback ends the settled pose is kept until a slider, a preset or another
+  action takes over — it does not snap upright. Back Flip leans back, puts its
+  head on the floor, rolls over it and settles supine at about 83°; Front Flip
+  is the same track mirrored in X, touches down forwards and settles forward,
+  up on its feet at about −83°; Keep Rolling Backward touches down around 6.4 s
+  and ends on its back.
 * **How often a routine repeats** — the file marks the block that repeats but
   never how many times, and the robot's own count is not readable over BLE
   either. `--repeat 3` on Push Ups is the observed behaviour (three pumps, the
@@ -306,6 +328,7 @@ and digits, which is also what the browser exposes on each `<option>`:
 | `#run/pushups/0.854` | the deepest hinge |
 | `#run/pushups/3.035` | the first deep pump |
 | `#run/playdead/8.0` | halfway through the 16.781 s Play Dead |
+| `#run/backflip/1.8` | Back Flip's head touch, mid-roll |
 | `#run/lookleft` | starts the card-only 1.375 s look |
 
 ## Verifying without a browser
@@ -314,7 +337,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

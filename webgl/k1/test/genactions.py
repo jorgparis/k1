@@ -17,12 +17,14 @@ Timing provenance, strongest first:
              The UI says "estimated", so it is never mistaken for a measurement.
   unavailable no .sh exists on the card (four spec actions are like this)
 
-Every entry also keeps ``repeat`` and ``contact`` where the bytes do not say
-them: Push Ups stores one pump and the robot pumps three times, and it rests on
-its palms as well as its toes. The seated moves get ``contact: "seat"`` because
-a floor sit is not held up by flat soles; the display must drop the whole body
-to the floor with the pelvis and legs, not solve a standing pitch from the leg
-chain.
+Every entry also keeps ``repeat``, ``contact`` and ``flip`` where the bytes do
+not say them: Push Ups stores one pump and the robot pumps three times, and it
+rests on its palms as well as its toes. The seated moves get ``contact: "seat"``
+because a floor sit is not held up by flat soles; the display must drop the whole
+body to the floor with the pelvis and legs, not solve a standing pitch from the
+leg chain. The flip moves get a ``flip`` sign because a script stores servo
+angles, never a root spin: the name is the only thing that says whether the body
+rolls onto its back (+1) or its front (-1).
 
     python3 test/genactions.py
     python3 test/genactions.py --k1 /path/to/k1 --out src/actions.js
@@ -63,6 +65,16 @@ EST_MS_PER_RECORD = 700
 SEAT_MOVES = {
     "takeaseat", "sit", "stand",
     "sitlookleft", "sitlookright", "sitshowhand",
+}
+
+# Moves where the body leaves its feet and the root turns over. The bytes only
+# carry servo angles, so the name supplies the missing direction: +1 rolls
+# backwards onto the back, -1 forwards onto the front. The display hint is not
+# a servo value and does not change a single decoded frame.
+FLIP_MOVES = {
+    "backflip": +1,
+    "keeprollingbackward": +1,
+    "frontflip": -1,
 }
 
 
@@ -173,6 +185,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
             repeat = 3 if key == "pushups" else 1
             dec = shdecode.decode(path, duration_ms, contact, repeat)
             entry["frames"] = dec["frames"]
+            if key in FLIP_MOVES:
+                entry["flip"] = FLIP_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:
@@ -211,7 +225,10 @@ def render(actions: dict, order: list[str]) -> str:
         "   `repeat` and `contact` are playback decisions, not bytes: Push Ups",
         "   stores one pump and the robot pumps three times, and it rests on its",
         "   palms as well as its toes. The seated moves rest their body on the",
-        "   floor, so the display seats the pelvis instead of standing on a sole. */",
+        "   floor, so the display seats the pelvis instead of standing on a sole.",
+        "   `flip` is the same kind of display hint: a script stores servo angles,",
+        "   never a root spin, so +1 means roll backwards onto the back and -1",
+        "   means roll forwards onto the front. No decoded frame is changed. */",
         "window.K1ACTIONS = {",
     ]
     for n, key in enumerate(order):
