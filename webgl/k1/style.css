@@ -176,7 +176,9 @@ body { display: flex; align-items: center; justify-content: center; }
 #movePick optgroup { color: #54e8ff; font-style: normal; letter-spacing: .06em; }
 #moveBar {
   height: 3px; margin: 5px 0 3px; background: #1a2434; overflow: hidden;
+  cursor: pointer;
 }
+#moveBar:hover { background: #22304a; }
 #moveBar i {
   display: block; width: 0%; height: 100%;
   background: repeating-linear-gradient(90deg, #ffb03c 0 4px, #7c4a12 4px 6px);

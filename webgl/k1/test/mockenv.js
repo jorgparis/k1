@@ -243,6 +243,11 @@ function makeSandbox(opts) {
   };
 
   const els = {};
+  /* index.html seeds the scrubber with its fill element (#moveBar > i); the demo
+     writes the percentage to that child and leaves the frame's own width alone,
+     so the mock has to have it too. */
+  els.moveBar = mkEl('moveBar');
+  els.moveBar.appendChild(mkEl('moveBar:i'));
   const quiet = { log() {}, warn(...a) { opts.warnings.push('warn: ' + a[0]); }, error(...a) { opts.warnings.push('error: ' + a[0]); } };
   opts.warnings = opts.warnings || [];
 

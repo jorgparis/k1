@@ -450,16 +450,25 @@
       + a.frames.length + ' keyframes';
   }
 
+  /* The bar is the scrubber, so the frame keeps its full width and only the
+     inner <i> is filled. Writing the width to the container made the whole bar
+     shrink to nothing (and left the scrubber with a zero-width hit area). */
+  function fillBar(frac) {
+    const bar = document.getElementById('moveBar');
+    if (!bar) return;
+    const fill = bar.children && bar.children[0];
+    if (fill) fill.style.width = (clamp(frac, 0, 1) * 100).toFixed(1) + '%';
+  }
+
   function syncMoveInfo() {
     const pick = document.getElementById('movePick');
     const info = document.getElementById('moveInfo');
-    const bar = document.getElementById('moveBar');
     syncRecAt();
     if (!info) return;
     const a = (pick && actions()[pick.value]) || act.data;
     if (!a) {
       info.textContent = '—';
-      if (bar) bar.style.width = '0%';
+      fillBar(0);
       return;
     }
     let text = moveClockText(a);
@@ -473,11 +482,10 @@
     }
     info.textContent = text;
     info.title = text;
-    if (bar) {
-      const frac = (act.data === a && a.duration_ms)
-        ? Math.max(0, Math.min(1, act.t * 1000 / a.duration_ms)) : 0;
-      bar.style.width = (frac * 100).toFixed(1) + '%';
-    }
+    /* The fill spans the display track, so the bar reaches the end exactly
+       when a flip has finished settling. */
+    const frac = (act.data === a && a.duration_ms) ? act.t / trackSpan(a) : 0;
+    fillBar(frac);
   }
 
   function buildMoves() {
@@ -530,6 +538,27 @@
     }
 
     if (find) find.addEventListener('input', fill);
+    /* The bar doubles as the scrubber, so a beat remembered from the robot can
+       be found again without replaying the take. */
+    const bar = document.getElementById('moveBar');
+    if (bar) {
+      let grab = false;
+      const seekAt = (e) => {
+        const r = bar.getBoundingClientRect();
+        const f = clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1);
+        const a = actions()[pick.value];
+        if (a && a.duration_ms) seekAction(pick.value, f * trackSpan(a));
+      };
+      bar.addEventListener('pointerdown', (e) => {
+        grab = true;
+        try { bar.setPointerCapture(e.pointerId); } catch (err) { /* mock or odd pointer */ }
+        seekAt(e);
+        if (e.preventDefault) e.preventDefault();
+      });
+      bar.addEventListener('pointermove', (e) => { if (grab) seekAt(e); });
+      bar.addEventListener('pointerup', () => { grab = false; });
+      bar.addEventListener('pointercancel', () => { grab = false; });
+    }
     pick.addEventListener('change', () => {
       /* Browsing to another move starts that move's clock at zero, so the next
          mark cannot be attributed to the take that was played before it. */
@@ -623,7 +652,7 @@
     const a = key ? actions()[key] : null;
     /* A flip's settle is display time but it is still on the same clock, and a
        deep link may sit in it, so a mark there is allowed. */
-    const lim = a ? a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0) : 0;
+    const lim = a ? trackSpan(a) : 0;
     const t = a ? +clamp(rec.at.t, 0, lim).toFixed(3) : 0;
     const model = a ? K1.actionPose(a, t) : null;
     const pose = poseJSON().byName;
@@ -633,6 +662,13 @@
         if (Math.round(pose[j.name]) !== Math.round(model[j.name])) diff++;
       }
     }
+    /* Measure the picture, not the last frame. A seek (or a scrubbed bar) sets
+       the joints and the action clock but no frame is drawn before the key is
+       pressed, so the part transforms would still describe the previous pose -
+       a mark at a flip's head-touch would claim the head was 700 mm up. Solving
+       the root again from the joints on screen is what the next frame would do
+       anyway, and it leaves the pose untouched. */
+    updateWorld();
     const meas = measureParts();
     const low = {}, at = {};
     for (const p of meas) {
@@ -659,20 +695,35 @@
     return mark;
   }
 
-  /* The way back from a note to the picture: put the take on that second with
-     the file's own pose, so a guess about a beat can be checked at once. */
-  function recSeek(m) {
-    const a = m && m.action ? actions()[m.action] : null;
+  /* The bar under the move list is also the scrubber: an action can be held at
+     any second without playing it, which is how a beat remembered from the real
+     robot is found again. A flip's settle is on the same clock (FLIP_SETTLE),
+     so the bar can reach the settled pose too, while the readout still counts
+     only the file. Scrubbing a playing take keeps it playing. */
+  function seekAction(key, t) {
+    const a = key ? actions()[key] : null;
     if (!a || !a.frames || !a.frames.length) return false;
-    if (!playAction(m.action)) return false;
-    act.playing = false;
-    act.t = Math.min(m.t, a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0));
-    rec.at = { key: m.action, t: act.t };
+    const lim = trackSpan(a);
+    const wasPlaying = act.playing && act.key === key;
+    if (act.key !== key || !act.data) playAction(key);
+    act.playing = wasPlaying;
+    act.t = clamp(t, 0, lim);
+    rec.at = { key, t: act.t };
     const p = K1.actionPose(a, act.t);
     st.target = p;
     st.joints = p;
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
+    syncMoveInfo();
+    return true;
+  }
+
+  /* The way back from a note to the picture: put the take on that second with
+     the file's own pose, so a guess about a beat can be checked at once. */
+  function recSeek(m) {
+    if (!m || !m.action) return false;
+    if (!seekAction(m.action, m.t)) return false;
+    act.playing = false;                // a still, not a take
     syncMoveInfo();
     return true;
   }
@@ -1078,6 +1129,12 @@
      rest on the floor instead of freezing in the air. Display only; the
      action's measured clock is unchanged. */
   const FLIP_SETTLE = 1.5;
+  /* The whole display track of an action: the file's own measured length, plus
+     a flip's settle, which is display time on the same clock. The scrubber and
+     its fill both span this, so the end of the bar is the end of the picture. */
+  function trackSpan(a) {
+    return a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0);
+  }
   /* The parts that can carry the body on the floor. The arms are deliberately
      absent; see above. */
   const FLIP_BODY = [
@@ -1797,7 +1854,7 @@
       /* A flip's track runs on past the file's end so the body can settle;
          seeking there is allowed, and seeking exactly at the file's end still
          works because the sampler clamps to the last sample. */
-      const lim = act.data.duration_ms / 1000 + (act.data.flip ? FLIP_SETTLE : 0);
+      const lim = trackSpan(act.data);
       act.t = clamp(at, 0, lim);
       const p = K1.actionPose(act.data, act.t);
       st.target = p;
@@ -1849,6 +1906,8 @@
       const a = actions()[key];
       return a && a.flip ? flipTrack(a) : null;
     },
+    /* Hold any second of an action: the same call the progress bar makes. */
+    seek: seekAction,
     /* Where the rig actually ended up, in world space. The harnesses and the
        screenshot probes use this to measure contact - a hand on the floor, a
        sole on the floor - instead of looking at pixels. */

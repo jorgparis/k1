@@ -1251,6 +1251,47 @@ world(J());
   check('copy puts the record on the clipboard, not on the network',
     els.recCopied.textContent === 'copied', els.recCopied.textContent);
 
+  /* The bar under MOVES is the scrubber: the way to find a remembered beat
+     without replaying the take. */
+  demo.seek('backflip', 1.8);
+  const seekAt = K1.actionPose(demo.actions().backflip, 1.8);
+  check('the progress bar holds any second, with the file pose and the clock',
+    demo.act.playing === false && Math.abs(demo.act.t - 1.8) < 1e-9 &&
+    demo.st.target.head === Math.round(seekAt.head) &&
+    demo.record.clock().key === 'backflip' &&
+    Math.abs(demo.record.clock().t - 1.8) < 1e-9,
+    demo.act.t.toFixed(3) + 's');
+  demo.seek('backflip', 999);
+  check('a scrub past the settle stops at the end of the display track',
+    Math.abs(demo.act.t - (demo.actions().backflip.duration_ms / 1000 +
+      demo.flip('backflip').settle)) < 1e-9, demo.act.t.toFixed(3) + 's');
+  demo.playAction('backflip');
+  const barEl = els['moveBar'];
+  for (const fn of (barEl._on && barEl._on.pointerdown) || []) {
+    fn({ clientX: 640, pointerId: 1, preventDefault() {} });
+  }
+  check('the bar itself is wired to that seek, and keeps a playing take playing',
+    demo.act.t > 2 && demo.act.playing === true, demo.act.t.toFixed(2) + 's');
+  const bf = demo.actions().backflip;
+  const bfSpan = bf.duration_ms / 1000 + (bf.flip ? demo.flip('backflip').settle : 0);
+  demo.seek('backflip', bfSpan / 2);
+  const fill = barEl.children && barEl.children[0];
+  check('the bar fills its inner element and keeps its own full width',
+    fill && Math.abs(parseFloat(fill.style.width) - 50) < 0.2 &&
+    !barEl.style.width,
+    (fill ? fill.style.width : 'no fill') + ' / frame "' + barEl.style.width + '"');
+
+  /* A scrub sets the joints and the clock but no frame runs in between, so the
+     mark has to re-solve the picture before it measures, or the head height it
+     reports belongs to the previous pose. */
+  demo.seek('backflip', 1.8);
+  const m4 = demo.record.mark();
+  check('a mark on a scrubbed still measures that still, not the last frame',
+    Math.abs(m4.t - 1.8) < 1e-9 && m4.low.head <= 5 && m4.lean > 100,
+    'head ' + m4.low.head + 'mm, lean ' + m4.lean + 'deg');
+  demo.stopAction();
+  demo.seek('backflip', m.t);
+
   click(els.recClear);
   check('clear empties the list as well as the data',
     demo.record.marks().length === 0 && els.recList.children.length === 0);
