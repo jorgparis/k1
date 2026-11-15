@@ -1189,6 +1189,9 @@ world(J());
   click(els.recClear);
   check('clear forgets the marks', demo.record.marks().length === 0);
 
+  check('with nothing dialled by hand the recall button is inert',
+    els.recRecall.disabled === true && demo.record.recall() === false);
+
   /* Keys typed into a field must stay in the field. Before the guard, "P" in
      the move filter started Push Ups while the letter was being typed. */
   key('p', { tagName: 'INPUT' });
@@ -1218,15 +1221,19 @@ world(J());
     'head ' + m.low.head + 'mm, lean ' + m.lean + 'deg');
 
   /* Dialling the sliders is how a mark records a pose the robot was seen in.
-     That stops the take (any slider does), so the clock has to survive it. */
+     It freezes the take, so the clock - and the flip's root, which is what the
+     lean means - has to survive it instead of standing the model up. */
   demo.selectJoint(16);
   const j = demo.JOINTS[16];
   const room = demo.st.target.head + 40 <= j.max ? 40 : -40;
   demo.nudge(room);
   tick(30);
-  check('stopping to dial the pose keeps the action clock',
-    demo.act.key === null && demo.record.clock().key === 'backflip' &&
-    Math.abs(demo.record.clock().t - t) < 1e-6);
+  check('dialling a joint freezes the take, keeping its clock and its lean',
+    demo.act.playing === false && demo.act.key === 'backflip' &&
+    demo.record.clock().key === 'backflip' &&
+    Math.abs(demo.record.clock().t - t) < 1e-6 &&
+    Math.abs(demo.lean() * 180 / Math.PI - m.lean) < 0.5,
+    demo.lean().toFixed(1) + 'deg vs ' + m.lean + 'deg');
   click(els.recMark);
   const m2 = demo.record.marks()[1];
   check('a pose dialled to match the robot is stored and diffed against the file',
@@ -1303,6 +1310,42 @@ world(J());
     m3 && m3.note === 'lands on its back' && els.recNote.value === '' &&
     Math.abs(m3.t - m.t) < 1e-9,
     m3 ? m3.note + ' at ' + m3.t.toFixed(2) + 's' : 'no mark');
+
+  /* A dialled pose used to die the moment a take ran on, because the action
+     owns the sliders. It is remembered now, with the second it was matched to,
+     so the mark can be made after the take has moved past it. */
+  demo.record.clear();
+  demo.playAction('backflip');
+  tick(60);                                    // 0.96 s of the file's clock
+  demo.selectJoint(0);                         // leftThigh
+  demo.nudge(20);
+  const held = demo.record.hold();
+  const dialled = demo.st.target.leftThigh;
+  check('dialling a joint remembers the pose and the second it was matched to',
+    held && held.key === 'backflip' && Math.abs(held.t - 0.96) < 0.02 &&
+    els.recRecall.disabled === false,
+    held ? held.key + ' ' + held.t.toFixed(2) + 's' : 'nothing held');
+
+  demo.playAction('backflip');
+  tick(20);
+  check('a take overwrites the dialled pose, as it always did',
+    demo.st.target.leftThigh !== dialled);
+
+  const rec = demo.record.recall();
+  check('recall puts the dialled pose back, still, with its take and second',
+    rec === true && demo.st.target.leftThigh === dialled &&
+    demo.st.joints.leftThigh === dialled &&
+    demo.act.key === 'backflip' && demo.act.playing === false &&
+    demo.record.clock().key === 'backflip' &&
+    Math.abs(demo.record.clock().t - held.t) < 1e-9,
+    demo.act.key + ' ' + demo.record.clock().t.toFixed(2) + 's');
+
+  const m6 = demo.record.mark();
+  check('the recalled pose can still be marked, and diffs against the file',
+    m6.t > 0.9 && m6.diff === 1 &&
+    m6.pose.leftThigh === Math.round(dialled) &&
+    m6.pose.leftThigh !== m6.model.leftThigh,
+    'diff ' + m6.diff + ', thigh ' + m6.pose.leftThigh + ' vs ' + m6.model.leftThigh);
 }
 
 console.log(bad ? '\nRESULT: FAIL (' + bad + ')' : '\nRESULT: PASS');

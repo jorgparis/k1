@@ -225,7 +225,7 @@ body { display: flex; align-items: center; justify-content: center; }
 #recList::-webkit-scrollbar { width: 6px; }
 #recList::-webkit-scrollbar-thumb { background: #24344a; }
 #recList:empty::before {
-  content: "V marks a beat · Enter marks with your note";
+  content: "V marks a beat · U recalls the pose you dialled";
   display: block; padding: 2px 3px;
   color: #35455e; font-size: 9px; line-height: 1.35;
 }
@@ -254,6 +254,8 @@ body { display: flex; align-items: center; justify-content: center; }
 /* buttons backed by the robot's own card data, not a made-up pose */
 #panel .foot button.real, #moves button.real, #rec button.real { color: #ffb03c; border-color: #7a4a12; }
 #panel .foot button.real:hover, #moves button.real:hover, #rec button.real:hover { color: #05060b; background: #ffb03c; border-color: #ffb03c; }
+#rec button:disabled { color: #35455e; border-color: #1d2a3d; background: #0c131d; cursor: default; }
+#rec button:disabled:hover { color: #35455e; border-color: #1d2a3d; background: #0c131d; }
 #copied, #recCopied { color: #ffb03c; font-size: 10px; align-self: center; min-height: 1em; }
 
 /* Keep the canvas out from under the panel on a window wide enough for both.

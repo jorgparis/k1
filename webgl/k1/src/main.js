@@ -229,6 +229,14 @@
      measured. */
   const rec = { at: { key: null, t: 0 }, marks: [] };
 
+  /* The last pose a hand made, with the action second it was matched against.
+     Playing an action owns the sliders, so the dialled pose is overwritten the
+     moment the take runs on; before this, that was the end of it. `hold` keeps
+     the last hand-made pose so it can be put back on screen, at the same second,
+     and marked after the fact. Only joint edits fill it - a preset or a reset is
+     the demo's own pose, not an observation of the robot. */
+  const hold = { pose: null, key: null, t: 0 };
+
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
 
@@ -272,6 +280,15 @@
     act.name = null;
   }
 
+  /* A joint edit takes the pose over but keeps the action's context. On a flip
+     the lean and the root come from the action's own clock, so releasing the
+     action the moment a slider moved stood a mid-roll pose upright - which is
+     the opposite of what someone dialling the model to match a robot mid-move
+     wants. Freeze drops only playback; the Stop button still releases it. */
+  function freezeAction() {
+    act.playing = false;
+  }
+
   function applyPreset(key) {
     const p = PRESETS[key];
     if (!p) return;
@@ -307,10 +324,11 @@
   }
   function nudge(raw) {
     cam.auto = false;
-    stopAction();
+    freezeAction();
     const j = JOINTS[st.sel];
     st.target[j.name] = K1.clampRaw(j.name, st.target[j.name] + raw);
     st.scene = j.name.toUpperCase();
+    saveHold();
     syncPanel();
   }
   window.addEventListener('keydown', (e) => {
@@ -326,6 +344,7 @@
     if (k === 'r') { st.yaw = 0; sim.phase = 0; sim.ground = 0; applyPreset('neutral'); }
     if (k === 'm') { Music.toggle(); updateHint(); }
     if (k === 'v') recMark();
+    if (k === 'u') recRecall();
     if (k === 'w') sim.wire = !sim.wire;
     if (k === 'n') sim.mode = (sim.mode + 1) % 3;
     if (k === 'c') sim.hueOn = !sim.hueOn;
@@ -341,7 +360,13 @@
     if (k === 'arrowright') { selectJoint(st.sel + 1); e.preventDefault(); }
     if (k === 'arrowup') { nudge(e.shiftKey ? 1 : 5); e.preventDefault(); }
     if (k === 'arrowdown') { nudge(e.shiftKey ? -1 : -5); e.preventDefault(); }
-    if (k === '0') { stopAction(); const j = JOINTS[st.sel]; st.target[j.name] = j.neutral; syncPanel(); }
+    if (k === '0') {
+      freezeAction();
+      const j = JOINTS[st.sel];
+      st.target[j.name] = j.neutral;
+      saveHold();
+      syncPanel();
+    }
     if (k === 'p') { playAction('pushups'); }
     if (k >= '1' && k <= '4') {
       const p = CAM_PRESETS[+k - 1];
@@ -401,9 +426,10 @@
       sl.setAttribute('aria-label', j.name);
       sl.addEventListener('input', () => {
         cam.auto = false;
-        stopAction();
+        freezeAction();
         st.target[j.name] = K1.clampRaw(j.name, +sl.value);
         st.scene = j.name.toUpperCase();
+        saveHold();
         syncPanel();
       });
 
@@ -695,6 +721,50 @@
     return mark;
   }
 
+  /* --------------------------------------------------------- remembered pose */
+  function saveHold() {
+    const p = {};
+    for (const j of JOINTS) p[j.name] = st.target[j.name];
+    hold.pose = p;
+    hold.key = rec.at.key;
+    hold.t = rec.at.t;
+    syncHold();
+  }
+
+  function recRecall() {
+    if (!hold.pose) return false;
+    /* Put the take back on that second first, so the root (the flip's lean,
+       the seated drop, the hands-and-feet pitch) returns with the pose. */
+    if (!(hold.key && seekAction(hold.key, hold.t))) stopAction();
+    act.playing = false;                // a remembered still, never a take
+    const p = {};
+    for (const j of JOINTS) p[j.name] = K1.clampRaw(j.name, hold.pose[j.name]);
+    st.target = p;
+    /* Restored as a still, not eased: this is a pose that was already on the
+       screen once, and watching the servos travel back to it would blur which
+       second the mark is about. */
+    st.joints = p;
+    st.scene = 'RECALLED POSE';
+    /* The mark that should have been made then can still be made: the clock
+       goes back to the second the pose was dialled against. */
+    rec.at = { key: hold.key, t: hold.t };
+    syncPanel();
+    syncMoveInfo();
+    return true;
+  }
+
+  function syncHold() {
+    const b = document.getElementById('recRecall');
+    if (!b) return;
+    const a = hold.key ? actions()[hold.key] : null;
+    b.disabled = !hold.pose;
+    b.title = hold.pose
+      ? 'recall the pose you dialled by hand'
+        + (a ? ' at ' + a.name + ' ' + hold.t.toFixed(2) + 's' : '')
+        + ' (U)'
+      : 'nothing dialled by hand yet (U)';
+  }
+
   /* The bar under the move list is also the scrubber: an action can be held at
      any second without playing it, which is how a beat remembered from the real
      robot is found again. A flip's settle is on the same clock (FLIP_SETTLE),
@@ -774,7 +844,9 @@
     const clear = document.getElementById('recClear');
     const copy = document.getElementById('recCopy');
     const note = document.getElementById('recNote');
+    const recall = document.getElementById('recRecall');
     if (mark) mark.addEventListener('click', () => recMark());
+    if (recall) recall.addEventListener('click', () => recRecall());
     if (clear) clear.addEventListener('click', () => recClear());
     if (copy) copy.addEventListener('click', () => recCopy());
     if (note) {
@@ -788,6 +860,7 @@
     }
     recRender();
     syncRecAt();
+    syncHold();
   }
 
   function copyText(text, statusId) {
@@ -1922,7 +1995,10 @@
       mark: recMark,
       clear: recClear,
       seek: (i) => recSeek(rec.marks[i]),
-      json: recJSON
+      json: recJSON,
+      /* The last pose dialled by hand, and the way back to it. */
+      recall: recRecall,
+      hold: () => (hold.pose ? { key: hold.key, t: hold.t } : null)
     },
   };
 

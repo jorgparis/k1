@@ -142,7 +142,10 @@ every one of those is a shallow bow. Change it and every joint scales together.
   heights at that second, so "the head touches here" can be compared with what
   the file asks for. `copy` puts the marks on the clipboard as one JSON block;
   nothing is uploaded. Clicking a mark seeks the take back to that second, and
-  the strip folds away behind its header when the sliders need the room.
+  the strip folds away behind its header when the sliders need the room. A pose
+  dialled by hand is remembered too: a take owns the sliders and would otherwise
+  wipe it, so `U` (or `recall`) puts the last hand-made pose back with the second
+  it was dialled against, ready to be marked.
 * **Retro post chain** — everything renders into a 320×200 framebuffer that is
   then upscaled with `image-rendering: pixelated`. The post shader adds ordered
   Bayer 8×8 dithering, palette quantization, scanlines, an aperture mask,
@@ -165,6 +168,7 @@ every one of those is a shallow bow. Change it and every joint scales together.
 | `R` | reset the pose |
 | `M` | music on / off (starts off) |
 | `V` | mark a beat in the recorder |
+| `U` | recall the last pose you dialled by hand |
 | `W` | wireframe overlay |
 | `N` | shading mode |
 | `C` | colour cycle |
@@ -186,9 +190,10 @@ robot's, so `V` stamps the second that was on screen when you pressed it. If the
 robot has already finished, drag the bar under the move list to hold any second
 and mark from there — it is a scrubber, and on a flip it reaches the settled
 pose. If you dial the sliders to the robot's pose first, the mark stores that
-pose as well and counts how many joints differ from the file. A mark with no
-pose of its own is just the model's pose — it is not evidence that the robot
-agreed.
+pose as well and counts how many joints differ from the file; a joint edit
+freezes the take instead of ending it, so the clock and the flip's lean stay
+while the sliders move. A mark with no pose of its own is just the model's pose
+— it is not evidence that the robot agreed.
 
 ## Layout
 
@@ -322,8 +327,9 @@ Four things the bytes do not carry, and where they are decided instead:
   last keyframe the pose is held and the same solve runs on for
   `FLIP_SETTLE = 1.5 s` so the body settles onto the floor, not in mid-air; the
   readout and deep links still count only the measured file clock. When
-  playback ends the settled pose is kept until a slider, a preset or another
-  action takes over — it does not snap upright. Back Flip leans back, puts its
+  playback ends the settled pose is kept until a preset or another action takes
+  over — it does not snap upright, and moving a slider only freezes the take and
+  moves that one joint. Back Flip leans back, puts its
   head on the floor, rolls over it and settles supine at about 83°; Front Flip
   is the same track mirrored in X, touches down forwards and settles forward,
   up on its feet at about −83°; Keep Rolling Backward touches down around 6.4 s
@@ -365,6 +371,13 @@ name first if you like (`Enter` marks and clears the box). Each mark records
 * and, if you paused and dialled the sliders to the robot's pose first, that
   pose as well, plus how many joints differ from the file.
 
+A dialled pose outlives the take: playing the action overwrites the sliders, but
+`U` (or the `recall` button) restores the last pose you set by hand, snaps it on
+screen and puts the clock back to the second it was dialled against, so the mark
+can still be made after the take has moved past. Only joint edits are kept — a
+preset or `R` is the demo's own pose, not an observation — and the memory is not
+saved across a reload.
+
 `copy` produces one JSON object (`format: "k1-record/1"`) ready to paste into a
 report; nothing leaves the machine on its own. Clicking a mark puts the take
 back on that second with the file's pose and root, and the bar under the move
@@ -379,7 +392,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which stops the take), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, and a keystroke typed into a text field no longer fires the shortcuts |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take without standing a flip up), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, and a keystroke typed into a text field no longer fires the shortcuts |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |
