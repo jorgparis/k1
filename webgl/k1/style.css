@@ -188,20 +188,71 @@ body { display: flex; align-items: center; justify-content: center; }
 }
 #moves .moveline { display: flex; gap: 4px; }
 
+/* -------------------------------------------------------------- recorder */
+/* A narrow strip, not a second page: the point is to press V while watching
+   the real robot. It folds away (click RECORD) when the 17 servo rows need the
+   room back, and the action and second a mark would be attributed to stay
+   visible even folded. The list is one line per mark and scrolls; clicking a
+   mark seeks the take to it. */
+#rec {
+  flex: 0 0 auto; padding: 6px 8px 5px;
+  border-bottom: 1px solid #1d2a3d;
+}
+#rec summary { list-style: none; cursor: pointer; }
+#rec summary::-webkit-details-marker { display: none; }
+#rec .recHead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px; color: #ff9ecb; font-size: 10px; letter-spacing: .12em;
+}
+#rec .recHead b::after { content: " −"; color: #3f516b; letter-spacing: 0; }
+#rec:not([open]) .recHead { margin-bottom: 0; }
+#rec:not([open]) .recHead b::after { content: " +"; }
+#rec .recHead span {
+  color: #3f516b; letter-spacing: .04em; font-size: 9.5px;
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#recNote {
+  width: 100%; margin: 0 0 4px; padding: 3px 5px;
+  font: inherit; font-size: 10px; color: #dbe7f6;
+  background: #0a0e18; border: 1px solid #27384e; outline: none;
+}
+#recNote:focus { border-color: #ff9ecb; }
+#recNote::placeholder { color: #3f516b; }
+#rec .recLine { display: flex; gap: 4px; }
+#recList { max-height: 58px; overflow-y: auto; margin-top: 4px; }
+#recList::-webkit-scrollbar { width: 6px; }
+#recList::-webkit-scrollbar-thumb { background: #24344a; }
+#recList:empty::before {
+  content: "V marks a beat · Enter marks with your note";
+  display: block; padding: 2px 3px;
+  color: #35455e; font-size: 9px; line-height: 1.35;
+}
+.recRow {
+  padding: 2px 3px; cursor: pointer;
+  border-left: 2px solid transparent;
+  color: #6f88a8; font-size: 9.5px; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.recRow:hover {
+  color: #e8f4ff; border-left-color: #ff9ecb;
+  background: rgba(255, 158, 203, .07);
+}
+.recRow b { color: #ff9ecb; font-weight: normal; }
+
 #panel .foot {
   display: flex; flex-wrap: wrap; gap: 4px;
   padding: 7px 8px; border-top: 1px solid #1d2a3d;
 }
-#panel .foot button, #moves button {
+#panel .foot button, #moves button, #rec button {
   font: inherit; font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
   color: #9fb0c8; background: #121a26; border: 1px solid #27384e;
   padding: 4px 6px; cursor: pointer;
 }
-#panel .foot button:hover, #moves button:hover { color: #05060b; background: #54e8ff; border-color: #54e8ff; }
+#panel .foot button:hover, #moves button:hover, #rec button:hover { color: #05060b; background: #54e8ff; border-color: #54e8ff; }
 /* buttons backed by the robot's own card data, not a made-up pose */
-#panel .foot button.real, #moves button.real { color: #ffb03c; border-color: #7a4a12; }
-#panel .foot button.real:hover, #moves button.real:hover { color: #05060b; background: #ffb03c; border-color: #ffb03c; }
-#copied { color: #ffb03c; font-size: 10px; align-self: center; min-height: 1em; }
+#panel .foot button.real, #moves button.real, #rec button.real { color: #ffb03c; border-color: #7a4a12; }
+#panel .foot button.real:hover, #moves button.real:hover, #rec button.real:hover { color: #05060b; background: #ffb03c; border-color: #ffb03c; }
+#copied, #recCopied { color: #ffb03c; font-size: 10px; align-self: center; min-height: 1em; }
 
 /* Keep the canvas out from under the panel on a window wide enough for both.
    Below that the panel simply sits on top, which still leaves the model usable. */

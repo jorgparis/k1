@@ -14,7 +14,7 @@
     <b>&larr; &rarr;</b> pick servo &nbsp; <b>&uarr; &darr;</b> move it &nbsp; <b>0</b> neutral &nbsp;
     <b>P</b> push ups &nbsp;
     <b>SPACE</b> pause &nbsp; <b>R</b> reset &nbsp; <b>W</b> wireframe &nbsp; <b>N</b> shade &nbsp;
-    <b>C</b> colour &nbsp; <b>H</b> hud &nbsp; <b>M</b> music &nbsp; <b>1-4</b> camera &nbsp; <b>drag</b> orbit &nbsp; <b>wheel</b> zoom
+    <b>C</b> colour &nbsp; <b>H</b> hud &nbsp; <b>M</b> music &nbsp; <b>V</b> mark &nbsp; <b>1-4</b> camera &nbsp; <b>drag</b> orbit &nbsp; <b>wheel</b> zoom
   </div>
 
   <div id="panel">
@@ -30,6 +30,17 @@
         <button id="moveStop">stop</button>
       </div>
     </div>
+    <details id="rec" open>
+      <summary class="recHead"><b>RECORD</b><span id="recAt">no action</span></summary>
+      <input id="recNote" type="text" placeholder="what the robot does, Enter = mark"
+             autocomplete="off" spellcheck="false">
+      <div class="recLine">
+        <button id="recMark" class="real">mark</button>
+        <button id="recClear">clear</button>
+        <button id="recCopy">copy</button>
+      </div>
+      <div id="recList"></div>
+    </details>
     <div id="rows"></div>
     <div class="foot">
       <button data-preset="neutral">neutral</button>

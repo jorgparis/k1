@@ -134,6 +134,15 @@ every one of those is a shallow bow. Change it and every joint scales together.
   then it pushes back up and stands. See *Real actions from the card* below.
 * **Copy pose** — writes the pose twice: an object by joint name, and the dense
   17-slot array by protocol index, which is the shape `jointMove` takes.
+* **Record what the real robot does** — the BLE link carries no telemetry, so
+  the page cannot know what the robot actually did. The `RECORD` strip is the
+  manual bridge: play a move here, watch the robot, and press `V` (or type a
+  note and press `Enter`) at each beat you can name. A mark keeps the action's
+  own clock, your note, the pose on screen, and the model's lean and part
+  heights at that second, so "the head touches here" can be compared with what
+  the file asks for. `copy` puts the marks on the clipboard as one JSON block;
+  nothing is uploaded. Clicking a mark seeks the take back to that second, and
+  the strip folds away behind its header when the sliders need the room.
 * **Retro post chain** — everything renders into a 320×200 framebuffer that is
   then upscaled with `image-rendering: pixelated`. The post shader adds ordered
   Bayer 8×8 dithering, palette quantization, scanlines, an aperture mask,
@@ -155,6 +164,7 @@ every one of those is a shallow bow. Change it and every joint scales together.
 | `SPACE` | pause / resume |
 | `R` | reset the pose |
 | `M` | music on / off (starts off) |
+| `V` | mark a beat in the recorder |
 | `W` | wireframe overlay |
 | `N` | shading mode |
 | `C` | colour cycle |
@@ -171,6 +181,12 @@ a floor sit folds the legs straight forward, and from the front that fold
 projects sideways and looks like a hip swing. A camera you set yourself is left
 alone, so press `2` again if an earlier drag put you back on a front view.
 
+A recorder mark is approximate on purpose: its clock is the page's, not the
+robot's, so `V` stamps the second that was on screen when you pressed it. If you
+first pause and dial the sliders to the robot's pose, the mark stores that pose
+as well and counts how many joints differ from the file. A mark with no pose of
+its own is just the model's pose — it is not evidence that the robot agreed.
+
 ## Layout
 
 `k1.html` is generated — edit the files below and re-run the bundler rather
@@ -179,7 +195,7 @@ than editing the bundle.
 | File | Contents |
 | --- | --- |
 | `k1.html` | **generated** single-file build; this is the one to open |
-| `index.html` | page shell, load-failure guard, script order, servo panel markup |
+| `index.html` | page shell, load-failure guard, script order, servo and record panel markup |
 | `style.css` | retro shell, intro panel, servo panel, error panel |
 | `src/math.js` | `M4` (compose is `T·Rx·Ry·Rz·S`), `V3`, scalar helpers |
 | `src/geo.js` | flat-shaded geometry generators, merge, wireframe edge list |
@@ -189,7 +205,7 @@ than editing the bundle.
 | `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; `window.K1ACTIONS` + `K1ACTION_LIST` |
 | `src/hud.js` | 320×200 1-bit HUD |
 | `src/music.js` | chiptune sequencer |
-| `src/main.js` | GL setup, render passes, camera, servo panel, presets, action player, input |
+| `src/main.js` | GL setup, render passes, camera, servo panel, presets, action player, recorder, input |
 
 ## Real actions from the card
 
@@ -331,13 +347,35 @@ and digits, which is also what the browser exposes on each `<option>`:
 | `#run/backflip/1.8` | Back Flip's head touch, mid-roll |
 | `#run/lookleft` | starts the card-only 1.375 s look |
 
-## Verifying without a browser
+### Comparing with the real robot
 
+The link is one-way: the K1 never reports a joint angle back, so neither a
+harness nor the page can check the model against the machine by itself. The
+`RECORD` strip closes that loop by hand. Play the move in the browser next to
+the real robot, press `V` when the robot does something nameable, and type the
+name first if you like (`Enter` marks and clears the box). Each mark records
+
+* the action and the second of its own clock — the page's clock, so approximate,
+* your note,
+* every joint value the file asks for at that second,
+* the model's solved lean and every part's height above the floor, in mm,
+* and, if you paused and dialled the sliders to the robot's pose first, that
+  pose as well, plus how many joints differ from the file.
+
+`copy` produces one JSON object (`format: "k1-record/1"`) ready to paste into a
+report; nothing leaves the machine on its own. Clicking a mark puts the take
+back on that second with the file's pose and root, so a note like "head touches
+at 1.3 s" can be checked against the model immediately. A mark without a `pose`
+key is the model's own pose — it is not evidence that the robot agreed. The
+BLE interface has no return channel, so this is the only way the real robot's
+behaviour gets into the repo, and it is a human observation, not a measurement.
+
+## Verifying without a browser
 Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which stops the take), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, and a keystroke typed into a text field no longer fires the shortcuts |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

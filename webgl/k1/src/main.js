@@ -220,6 +220,15 @@
      the easing would round off exactly the sharp beats the file encodes. */
   const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0 };
 
+  /* The manual recorder. The BLE protocol has no telemetry channel, so this
+     page cannot learn what the real robot did by itself; a person watching the
+     robot presses V (or types a note and presses Enter) at the beats that
+     matter. A mark remembers which action was on the clock and at which second,
+     the note, the pose the model was showing, and the model's own solved lean
+     and part heights. See the recorder block below for what is and is not
+     measured. */
+  const rec = { at: { key: null, t: 0 }, marks: [] };
+
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
 
@@ -231,6 +240,7 @@
     act.data = a;
     act.t = 0;
     act.playing = true;
+    rec.at = { key, t: 0 };
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     /* An action is a motion, not an idle pose, so stop the slow camera orbit
        that would otherwise read as the robot turning. A seated take and a flip
@@ -305,11 +315,17 @@
   }
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
+    /* A text field owns its keys. Before this guard, typing "head" into the
+       move filter also fired H, E, A and D, so a note could toggle the HUD or
+       start an action while it was being typed. */
+    const tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     const k = e.key.toLowerCase();
     keys[k] = true;
     if (k === ' ') { sim.paused = !sim.paused; e.preventDefault(); }
     if (k === 'r') { st.yaw = 0; sim.phase = 0; sim.ground = 0; applyPreset('neutral'); }
     if (k === 'm') { Music.toggle(); updateHint(); }
+    if (k === 'v') recMark();
     if (k === 'w') sim.wire = !sim.wire;
     if (k === 'n') sim.mode = (sim.mode + 1) % 3;
     if (k === 'c') sim.hueOn = !sim.hueOn;
@@ -405,6 +421,7 @@
     const copy = document.getElementById('copy');
     if (copy) copy.addEventListener('click', copyPose);
     buildMoves();
+    buildRecord();
     syncPanel();
   }
 
@@ -437,6 +454,7 @@
     const pick = document.getElementById('movePick');
     const info = document.getElementById('moveInfo');
     const bar = document.getElementById('moveBar');
+    syncRecAt();
     if (!info) return;
     const a = (pick && actions()[pick.value]) || act.data;
     if (!a) {
@@ -512,7 +530,12 @@
     }
 
     if (find) find.addEventListener('input', fill);
-    pick.addEventListener('change', syncMoveInfo);
+    pick.addEventListener('change', () => {
+      /* Browsing to another move starts that move's clock at zero, so the next
+         mark cannot be attributed to the take that was played before it. */
+      rec.at = { key: pick.value, t: rec.at.key === pick.value ? rec.at.t : 0 };
+      syncMoveInfo();
+    });
     if (play) play.addEventListener('click', () => {
       const key = pick.value;
       if (!key) return;
@@ -549,12 +572,176 @@
     return { byName, byIndex };
   }
 
-  function copyPose() {
-    const { byName, byIndex } = poseJSON();
-    const text = JSON.stringify(byName, null, 2)
-      + '\n\n# index order (jointMove):\n' + JSON.stringify(byIndex);
+  /* What the real robot did, in the only way this page can know it: a person
+     watching the robot presses the key.
+
+     The BLE protocol has no telemetry channel - nothing the K1 sends back
+     reports a joint angle - so no harness can compare the real machine with
+     this model on its own. The recorder is that comparison, done by hand.
+     While the real K1 performs a move, watch the same move here and press V -
+     or type what it is doing and press Enter - at every beat you can name:
+     "head touches", "hips at the top", "lands forward".
+
+     A mark stores:
+
+       t        the second of that action's own file clock, as shown when the
+                key was pressed. It is the page's clock, so it is approximate by
+                construction: it is not a time measured on the robot.
+       note     what the robot actually did, in your words.
+       lean     the model's display pitch in degrees at that second (+ back).
+       low      every part's lowest point in mm above the floor, so "the head
+                touches here" can be checked against the model's own answer.
+       model    the 17 joint values the file asks for at that second.
+       pose     the 17 joint values on screen, when they were moved away from
+                the file, or when there is no action at all. Its absence means
+                "the model's own pose", never "the robot agrees".
+
+     Nothing is sent anywhere. Copy puts the marks on the clipboard as one JSON
+     block, which is what gets pasted into a bug report. Clicking a mark in the
+     list puts the model back on that second, with the file's pose and root, so
+     the robot and the model can be looked at side by side. */
+  function roundPose(p) {
+    const o = {};
+    for (const j of JOINTS) o[j.name] = Math.round(p[j.name]);
+    return o;
+  }
+
+  function syncRecAt() {
+    const el = document.getElementById('recAt');
+    if (!el) return;
+    const a = rec.at.key ? actions()[rec.at.key] : null;
+    const count = rec.marks.length ? rec.marks.length + ' · ' : '';
+    el.textContent = a
+      ? count + a.name + ' ' + rec.at.t.toFixed(2) + 's'
+      : (rec.marks.length ? rec.marks.length + ' marks' : 'no action');
+  }
+
+  function recMark() {
+    const noteEl = document.getElementById('recNote');
+    const note = ((noteEl && noteEl.value) || '').trim();
+    const key = rec.at.key && actions()[rec.at.key] ? rec.at.key : null;
+    const a = key ? actions()[key] : null;
+    /* A flip's settle is display time but it is still on the same clock, and a
+       deep link may sit in it, so a mark there is allowed. */
+    const lim = a ? a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0) : 0;
+    const t = a ? +clamp(rec.at.t, 0, lim).toFixed(3) : 0;
+    const model = a ? K1.actionPose(a, t) : null;
+    const pose = poseJSON().byName;
+    let diff = 0;
+    if (model) {
+      for (const j of JOINTS) {
+        if (Math.round(pose[j.name]) !== Math.round(model[j.name])) diff++;
+      }
+    }
+    const meas = measureParts();
+    const low = {}, at = {};
+    for (const p of meas) {
+      low[p.name] = Math.round(p.low * 1000);
+      at[p.name] = p;
+    }
+    const mark = {
+      n: rec.marks.length + 1,
+      action: key,
+      name: a ? a.name : null,
+      t,
+      note,
+      diff,
+      lean: +(bodyPitch * 180 / Math.PI).toFixed(1),
+      low,
+      pelvis: [+at.pelvis.x.toFixed(3), +at.pelvis.y.toFixed(3), +at.pelvis.z.toFixed(3)],
+      model: model ? roundPose(model) : null,
+      pose: diff || !model ? roundPose(pose) : null
+    };
+    rec.marks.push(mark);
+    if (noteEl) noteEl.value = '';
+    recRender();
+    syncRecAt();
+    return mark;
+  }
+
+  /* The way back from a note to the picture: put the take on that second with
+     the file's own pose, so a guess about a beat can be checked at once. */
+  function recSeek(m) {
+    const a = m && m.action ? actions()[m.action] : null;
+    if (!a || !a.frames || !a.frames.length) return false;
+    if (!playAction(m.action)) return false;
+    act.playing = false;
+    act.t = Math.min(m.t, a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0));
+    rec.at = { key: m.action, t: act.t };
+    const p = K1.actionPose(a, act.t);
+    st.target = p;
+    st.joints = p;
+    st.scene = 'ACTION: ' + a.name.toUpperCase();
+    syncPanel();
+    syncMoveInfo();
+    return true;
+  }
+
+  function recClear() {
+    rec.marks.length = 0;
+    recRender();
+    syncRecAt();
+  }
+
+  function recJSON() {
+    return JSON.stringify({
+      format: 'k1-record/1',
+      note: 'hand-made marks: t is the page clock for that action, so it is approximate; '
+        + 'lean is the model root in degrees (+ backwards); low is the model in mm above '
+        + 'the floor; pose appears where the sliders were moved away from the file, or '
+        + 'whenever there is no action on the clock',
+      action: rec.at.key,
+      marks: rec.marks
+    }, null, 1);
+  }
+
+  function recCopy() {
+    copyText(recJSON(), 'recCopied');
+  }
+
+  function recRender() {
+    const list = document.getElementById('recList');
+    if (!list) return;
+    while (list.children.length) list.removeChild(list.children[0]);
+    for (const m of rec.marks) {
+      const row = document.createElement('div');
+      row.className = 'recRow';
+      const when = m.action ? m.t.toFixed(2) + 's' : 'pose';
+      const head = m.low && m.low.head != null ? 'head ' + m.low.head + 'mm' : '';
+      row.textContent = '#' + m.n + ' ' + when + (m.diff ? ' Δ' + m.diff : '')
+        + (head ? ' ' + head : '') + (m.note ? ' · ' + m.note : '');
+      row.title = m.action
+        ? m.name + ' at ' + m.t.toFixed(2) + 's · model lean ' + m.lean + '°'
+        : 'pose only';
+      row.addEventListener('click', () => recSeek(m));
+      list.appendChild(row);
+    }
+  }
+
+  function buildRecord() {
+    const mark = document.getElementById('recMark');
+    const clear = document.getElementById('recClear');
+    const copy = document.getElementById('recCopy');
+    const note = document.getElementById('recNote');
+    if (mark) mark.addEventListener('click', () => recMark());
+    if (clear) clear.addEventListener('click', () => recClear());
+    if (copy) copy.addEventListener('click', () => recCopy());
+    if (note) {
+      note.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          recMark();
+          if (e.preventDefault) e.preventDefault();
+          if (e.stopPropagation) e.stopPropagation();
+        } else if (e.key === 'Escape') { note.value = ''; note.blur(); }
+      });
+    }
+    recRender();
+    syncRecAt();
+  }
+
+  function copyText(text, statusId) {
     const done = () => {
-      const el = document.getElementById('copied');
+      const el = document.getElementById(statusId);
       if (!el) return;
       el.textContent = 'copied';
       setTimeout(() => { el.textContent = ''; }, 1400);
@@ -574,6 +761,12 @@
       document.body.removeChild(ta);
       done();
     }
+  }
+
+  function copyPose() {
+    const { byName, byIndex } = poseJSON();
+    copyText(JSON.stringify(byName, null, 2)
+      + '\n\n# index order (jointMove):\n' + JSON.stringify(byIndex), 'copied');
   }
 
   function resize() {
@@ -605,6 +798,7 @@
        them through the servo ease would flatten the arm pumps. */
     if (act.playing && act.data) {
       act.t += dt;
+      if (rec.at.key === act.key) rec.at.t = act.t;
       const done = act.data.duration_ms / 1000 +
         (act.data.flip ? FLIP_SETTLE : 0);
       if (act.t >= done) {
@@ -703,6 +897,25 @@
     let low = Infinity;
     for (const p of parts) low = Math.min(low, soleLow(p.name).y);
     return low;
+  }
+
+  /* Every part's world position and its lowest/highest vertex. The harnesses
+     and screenshot probes use it to measure contact - a hand on the floor, a
+     sole on the floor - and the recorder stores `low` so a note about the real
+     robot ("the head touches here") can be compared with what the model says. */
+  function measureParts() {
+    return parts.map((p) => {
+      let lo = Infinity, hi = -Infinity, lx = 0, lz = 0;
+      for (let i = 0; i < p.geo.pos.length; i += 3) {
+        M4.xformPoint(soleV, p.world, p.geo.pos[i], p.geo.pos[i + 1], p.geo.pos[i + 2]);
+        if (soleV[1] < lo) { lo = soleV[1]; lx = soleV[0]; lz = soleV[2]; }
+        if (soleV[1] > hi) hi = soleV[1];
+      }
+      return {
+        name: p.name, x: p.world[12], y: p.world[13], z: p.world[14],
+        low: lo, high: hi, lowAt: [lx, lo, lz]
+      };
+    });
   }
 
   /* Where each sole stands in the neutral pose, measured along the robot's
@@ -1590,6 +1803,9 @@
       st.target = p;
       st.joints = p;
       act.playing = false;                // a still, not a take
+      /* A mark made while looking at a deep-linked still belongs to that
+         second, not to zero. */
+      rec.at = { key: h[1], t: act.t };
       syncMoveInfo();
     }
     return true;
@@ -1636,18 +1852,19 @@
     /* Where the rig actually ended up, in world space. The harnesses and the
        screenshot probes use this to measure contact - a hand on the floor, a
        sole on the floor - instead of looking at pixels. */
-    measure: () => parts.map((p) => {
-      let lo = Infinity, hi = -Infinity, lx = 0, lz = 0;
-      for (let i = 0; i < p.geo.pos.length; i += 3) {
-        M4.xformPoint(soleV, p.world, p.geo.pos[i], p.geo.pos[i + 1], p.geo.pos[i + 2]);
-        if (soleV[1] < lo) { lo = soleV[1]; lx = soleV[0]; lz = soleV[2]; }
-        if (soleV[1] > hi) hi = soleV[1];
-      }
-      return {
-        name: p.name, x: p.world[12], y: p.world[13], z: p.world[14],
-        low: lo, high: hi, lowAt: [lx, lo, lz]
-      };
-    })
+    measure: measureParts,
+    /* The manual recorder. This is the only bridge from the real robot into the
+       page: nothing in the BLE protocol reports a joint angle back, so the
+       harnesses can check that a mark is stored honestly, not that the robot
+       agrees with it. */
+    record: {
+      marks: () => rec.marks.slice(),
+      clock: () => ({ key: rec.at.key, t: rec.at.t }),
+      mark: recMark,
+      clear: recClear,
+      seek: (i) => recSeek(rec.marks[i]),
+      json: recJSON
+    },
   };
 
   requestAnimationFrame(frame);

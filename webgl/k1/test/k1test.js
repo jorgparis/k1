@@ -9,6 +9,7 @@
      4. counts clamp to the servo's own travel
      5. an equal delta on a mirrored pair produces a mirror image
      6. the on-screen panel is built from the same table (no second list)
+     7. a recorded mark keeps its own clock, note and pose honest
 
    The axis and sign per joint are a hypothesis; these tests cannot prove them
    right against hardware, only that the model is internally consistent. */
@@ -1144,6 +1145,123 @@ world(J());
       Math.abs(cam.tDist - 2.4) < 1e-9);
     demo.stopAction();
   }
+}
+
+/* ------------------------------------------------------------ 7. recorder */
+/* The BLE link is one-way: no joint angle ever comes back from the robot, so
+   nothing here can compare the real machine with this model by itself. The
+   recorder is the manual bridge - a person watching the robot presses V at the
+   beats - and these checks are about a mark being honest about its clock, its
+   pose and its note, not about the robot agreeing with the model. */
+{
+  const opts = { audio: 'normal' };
+  makeSandbox(opts);
+  const FILES = ['math.js', 'geo.js', 'gl.js', 'shaders.js', 'k1.js', 'actions.js', 'hud.js', 'music.js', 'main.js'];
+  for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), opts.ctx, { filename: f });
+
+  for (const fn of opts.listeners['intro:click'] || []) fn({});
+  const run = (n) => { for (let i = 0; i < n; i++) { const q = opts.raf; opts.raf = []; for (const f of q) f(1000 + i * 16); } };
+  run(3);
+
+  const win = vm.runInContext('window', opts.ctx);
+  const demo = win.K1DEMO, K1 = win.K1, els = opts.els;
+  const perf = vm.runInContext('performance', opts.ctx);
+  let clockMs = perf.now();
+  perf.now = () => clockMs;
+  const tick = (n) => { for (let i = 0; i < n; i++) { clockMs += 16; run(1); } };
+  const key = (k, target) => {
+    for (const fn of opts.listeners['window:keydown'] || []) fn({ key: k, target, preventDefault() {} });
+  };
+  const click = (el) => { for (const fn of (el && el._on && el._on.click) || []) fn({}); };
+
+  check('the recorder starts empty and says so',
+    demo.record.marks().length === 0 && els.recList.children.length === 0 &&
+    els.recAt.textContent === 'no action', els.recAt.textContent);
+
+  /* A mark with no action on the clock is still useful: it is the pose on
+     screen, which is all a static observation can be. */
+  key('v');
+  const only = demo.record.marks()[0];
+  check('with no action on the clock a mark is just the pose',
+    only && only.action === null && only.t === 0 && only.model === null &&
+    only.pose && Object.keys(only.pose).length === 17 && only.low.head != null,
+    only ? (only.action + ' ' + only.t + 's') : 'no mark');
+  click(els.recClear);
+  check('clear forgets the marks', demo.record.marks().length === 0);
+
+  /* Keys typed into a field must stay in the field. Before the guard, "P" in
+     the move filter started Push Ups while the letter was being typed. */
+  key('p', { tagName: 'INPUT' });
+  check('typing in a text field does not fire the shortcuts', demo.act.key === null);
+
+  demo.playAction('backflip');
+  tick(84);                                   // 1.344 s of the file's own clock
+  const t = demo.act.t;
+  check('the recorder clock follows the take', Math.abs(demo.record.clock().t - t) < 1e-9,
+    demo.record.clock().t.toFixed(3) + ' vs ' + t.toFixed(3));
+
+  els.recNote.value = 'head touches the floor';
+  key('v');
+  const m = demo.record.marks()[0];
+  check('V marks the beat on the take\'s own clock, and takes the note with it',
+    m && m.action === 'backflip' && Math.abs(m.t - t) < 1e-6 &&
+    m.note === 'head touches the floor' && els.recNote.value === '',
+    m ? m.action + ' ' + m.t.toFixed(2) + 's "' + m.note + '"' : 'no mark');
+
+  const a = demo.actions().backflip;
+  const at = K1.actionPose(a, m.t);
+  check('the mark carries what the file asks for at that second',
+    m.model.head === Math.round(at.head) && m.model.leftHip === Math.round(at.leftHip));
+  check('an untouched pose is not stored twice', m.pose === null && m.diff === 0);
+  check('the mark stores the model\'s answer to the note (head height, lean)',
+    m.low.head >= -2 && m.low.head <= 15 && m.lean > 10,
+    'head ' + m.low.head + 'mm, lean ' + m.lean + 'deg');
+
+  /* Dialling the sliders is how a mark records a pose the robot was seen in.
+     That stops the take (any slider does), so the clock has to survive it. */
+  demo.selectJoint(16);
+  const j = demo.JOINTS[16];
+  const room = demo.st.target.head + 40 <= j.max ? 40 : -40;
+  demo.nudge(room);
+  tick(30);
+  check('stopping to dial the pose keeps the action clock',
+    demo.act.key === null && demo.record.clock().key === 'backflip' &&
+    Math.abs(demo.record.clock().t - t) < 1e-6);
+  click(els.recMark);
+  const m2 = demo.record.marks()[1];
+  check('a pose dialled to match the robot is stored and diffed against the file',
+    m2.diff === 1 && m2.pose.head === Math.round(demo.st.target.head) &&
+    m2.pose.head !== m2.model.head,
+    'diff ' + m2.diff + ', head ' + m2.pose.head + ' vs ' + m2.model.head);
+
+  /* The list is the way back from a note to the picture it describes. */
+  click(els.recList.children[0]);
+  check('clicking a mark puts the take back on that second with the file pose',
+    demo.act.key === 'backflip' && demo.act.playing === false &&
+    Math.abs(demo.act.t - m.t) < 1e-9 && demo.st.target.head === m.model.head,
+    demo.act.key + ' ' + demo.act.t.toFixed(3) + 's');
+
+  const json = JSON.parse(demo.record.json());
+  check('the copy block is one valid JSON file with both kinds of mark',
+    json.format === 'k1-record/1' && json.action === 'backflip' &&
+    json.marks.length === 2 && json.marks[0].pose === null && json.marks[1].pose !== null &&
+    /approximate/.test(json.note),
+    json.marks.length + ' marks');
+  click(els.recCopy);
+  check('copy puts the record on the clipboard, not on the network',
+    els.recCopied.textContent === 'copied', els.recCopied.textContent);
+
+  click(els.recClear);
+  check('clear empties the list as well as the data',
+    demo.record.marks().length === 0 && els.recList.children.length === 0);
+
+  els.recNote.value = 'lands on its back';
+  for (const fn of (els.recNote._on && els.recNote._on.keydown) || []) fn({ key: 'Enter', preventDefault() {} });
+  const m3 = demo.record.marks()[0];
+  check('Enter in the note box marks the beat and clears the box',
+    m3 && m3.note === 'lands on its back' && els.recNote.value === '' &&
+    Math.abs(m3.t - m.t) < 1e-9,
+    m3 ? m3.note + ' at ' + m3.t.toFixed(2) + 's' : 'no mark');
 }
 
 console.log(bad ? '\nRESULT: FAIL (' + bad + ')' : '\nRESULT: PASS');
