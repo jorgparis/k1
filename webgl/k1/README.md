@@ -409,30 +409,41 @@ behaviour gets into the repo, and it is a human observation, not a measurement.
 
 The display was built to the owner's account: *"for the back flip the robot
 leans back and it touches the floor with the head in order roll over to the
-back"*, and at about **1.3–1.5 s** *"the robot is completely bending to the
+back"*, and at **1.565 s** *"the robot is completely bending to the
 back so that it falls over by its own weight on its head stabalized left and
 right by the arms"*. Later in the same movement: *"head, and both arms form a
 triangle on the floor"*.
 
-A mark taken during that take (on the page clock of the time, before the timing
-change, so its seconds are not the current ones) recorded `t = 1.265 s`,
-`lean = 101.7°` and `diff = 7`. The two thighs, two calves, two ankles and the
-two shoulders were dialled away from the file. The corrected thighs point the
-opposite way from the file's tuck (left 41 against about 220, right 200 against
-about 20, in raw counts), while the calves and ankles sit within about 10 counts
-of it. Read that as a stiff topple: the robot fell on its own weight with its
-legs extended and its arms out, not as the tight tuck the bytes describe. The
-note on the mark is the owner's; the model's own measurement at that page second
-is not evidence of the robot's pose.
+A mark taken during that take records the corrected page second `t = 1.565 s`,
+`lean = 101.7°` and `diff = 7`. The two thighs, two calves, the left ankle and
+the two shoulders were dialled away from the file. The corrected thighs point
+the opposite way from the file's tuck (left 41 against 205, right 200 against
+39, in raw counts), and the calves fold the other way too (left 163 against
+119, right 82 against 132); only the left ankle stays close (+9). The
+shoulders are pulled apart from the file's 119/129 (96/169). Read that as a
+stiff topple: the robot fell on its own weight with its legs extended and its
+arms out, not as the tight tuck the bytes describe. The note on the mark is the
+owner's; the model's own measurement at that page second is not evidence of the
+robot's pose.
+
+What the display does at that second is the useful check. The file's limbs are
+already most of the way into the topple there - the record's `model` field is
+the file's pose, most of the way from the lead-in to the bend - but the solved
+root is still nearly upright at about 5°. The free solve only reaches 101.7° at
+about 1.97 s, and by then the feet are about 0.5 m up, where the mark has both
+soles on the floor (4 mm and 0 mm) and the head still 177 mm clear. So the limb
+pose is close to the owner's observation, but the root is not: the model hands
+the weight to the head earlier, while the robot is still pivoting over planted
+soles.
 
 Two limits are worth stating plainly:
 
 * the page clock and the file clock are not the same clock. The measured trace
   puts the first keyframe at 1.078 s and the head-down beat at about 2.05 s;
-  the owner's 1.3–1.5 s estimate is earlier than that. An app clock that
+  the owner's corrected 1.565 s is earlier than that. An app clock that
   started counting at the first keyframe would put the head-down beat at
-  0.97 s, so excluding the lead-in does not explain the estimate either. Treat
-  the seconds as approximate until the same take is filmed and counted.
+  0.97 s, so excluding the lead-in does not explain it either. Treat the
+  seconds as approximate until the same take is filmed and counted.
 * the arms are not part of the flip's contact solve. At 1.9 s the model's hands
   are already below the floor — the opaque floor hides them — whereas the owner
   saw both hands and the head forming a load-bearing triangle. The gross
