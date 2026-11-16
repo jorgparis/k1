@@ -428,13 +428,13 @@ robot's pose.
 
 What the display does at that second is the useful check. The file's limbs are
 already most of the way into the topple there - the record's `model` field is
-the file's pose, most of the way from the lead-in to the bend - but the solved
-root is still nearly upright at about 5°. The free solve only reaches 101.7° at
-about 1.97 s, and by then the feet are about 0.5 m up, where the mark has both
-soles on the floor (4 mm and 0 mm) and the head still 177 mm clear. So the limb
-pose is close to the owner's observation, but the root is not: the model hands
-the weight to the head earlier, while the robot is still pivoting over planted
-soles.
+the file's pose, 80 % of the way from the 1.078 s lead-in to the 1.687 s bend -
+but the solved root is still nearly upright at about 5°. The free solve only
+reaches 101.7° at about 1.97 s, and by then the feet are about 0.5 m up, where
+the mark has both soles on the floor (4 mm and 0 mm) and the head still 177 mm
+clear. So the limbs are close to the owner's observation, but the root is not:
+the robot pivots over planted soles into its head, while the model is already
+in the air by the time it reaches that lean.
 
 Two limits are worth stating plainly:
 
