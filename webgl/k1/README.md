@@ -241,26 +241,35 @@ record is `[4 bytes the K1 lacks][17 servo magnitudes][7 unused][speed][flags][t
 and each servo byte is **how far to travel from neutral**, not a position — the
 shoulder's 190 in `lift your arms` is exactly its 212−22 of travel, and the
 largest calf value in the corpus (160) is exactly 220−60. The first record ends
-`0b xx` (the action id), the last `fb fb`. Timing is not stored; the tool derives
-it from `max joint change / speed` per keyframe and stretches marked keyframes by
-their emphasis (below), then scales the whole action to the clock the phone data
-carries. That clock is the one measured on the robot where it exists (Push Ups
-9.625 s, Play Dead 16.781 s, Open Fire 13.907 s), `robot.json`'s declaration for
-the four moves with no script, and a record-count estimate (~700 ms per record,
-the median of the measured card-only scripts) for the 14 card scripts nobody has
-timed. The browser says `measured`, `declared` or `estimated` next to every
-action, so an estimate is never presented as a measurement.
+`0b xx` (the action id), the last `fb fb`. Timing is not stored. Byte 28 is the
+travel time for the move onto that keyframe, and it is not a speed: **a larger
+value is a slower move** (`Left Punch` strikes on 25 and returns on 15). Byte 29
+adds about 100 ms per unit, and the first record is a lead-in. Those two bytes,
+not the joint distance, predict the robot's own record boundaries: across 150
+clean boundaries the segment length and the joint change correlate at about
+zero, while the medians of the boundaries form the `TRAVEL_MS` table and the
+model reproduces each one-shot action's total to 98–99 %. `shdecode.py` uses
+them as weights and rescales to the action's clock. Where the robot's own
+`progress` trace has one sample per record, the demo uses the measured arrivals
+themselves: `test/timings.json` holds the sanitised traces for the 32 one-shot
+actions that have them, and `test/genactions.py` writes `timing: "trace"` for
+those and `timing: "table"` for everything else. That clock is the one measured
+on the robot where it exists (Push Ups 9.625 s, Play Dead 16.781 s, Open Fire
+13.907 s), `robot.json`'s declaration for the four moves with no script, and a
+record-count estimate (~700 ms per record, the median of the measured card-only
+scripts) for the 14 card scripts nobody has timed. The browser says `measured`,
+`declared` or `estimated` next to every action, so an estimate is never
+presented as a measurement.
 
-The flags byte is an **emphasis on that keyframe, relative to the keyframe's own
-time**, not an absolute dwell (`Bow` 30, `Propose` 50 then 85, `Do Squats` 20 at
-the bottom, `Lean Forward/Back` 30). It cannot be seconds: the same 45 sits on
-the same cannon pose in `Open Fire` (1.4 s) and `Fire In The Hole` (7.4 s), the
-same kneel pose is 35 in `Kneel, Please` but 50 in `Propose`, and no value
-anywhere on the card exceeds 85. Reading it as 0.1 s per unit would put
-`Play Dead` at 6.6 s and `Open Fire` at 7.3 s against their declared 1.68 s and
-1.4 s. `shdecode.py` lets it lengthen the move away from the marked pose and
-then rescales to the declared clock, so `Play Dead` really does lie still and
-stretch inside its 1.68 s. A *run* of records with it set is the block a routine
+The flags byte (29) is an **emphasis** that does have a unit after all: each
+point adds about 100 ms to the move that arrives at that keyframe. `Propose`'s
+85-flag record arrives 9515 ms after the previous one, against the 1000 ms base
+move for its speed-40 setting. The same value on the same pose therefore means
+different extra seconds when the move onto that pose differs — the byte marks an
+arrival, not the pose. It is easy to mistake this for a relative dwell and
+reject the unit: the old *declared* clocks for `Play Dead` (1.68 s) and `Open
+Fire` (1.4 s) made 0.1 s per unit look impossible, but the measured clocks are
+16.781 s and 13.907 s. A *run* of records with it set is the block a routine
 repeats: `Swing Arms` 1–4 is A,B,A,B, `Twist Butt` 1–6 is A,B,A,B,A,B, `Push
 Ups` 4–6 is A,B,A. How many times is nowhere in the file — `Do Squats` stores
 one squat for an 18 s action, and the robot keeps squatting. `--repeat N` plays
@@ -323,17 +332,21 @@ Four things the bytes do not carry, and where they are decided instead:
   spin. The solve runs at 1/120 s: at 1/60 s the contact choice is chaotic, and
   a 1e-7 change flipped the outcome. The arms are excluded from the contact
   shape — a swinging hand otherwise pole-vaults the body into a second roll,
-  and the opaque floor hides a forearm that passes through it. After the file's
-  last keyframe the pose is held and the same solve runs on for
-  `FLIP_SETTLE = 1.5 s` so the body settles onto the floor, not in mid-air; the
-  readout and deep links still count only the measured file clock. When
-  playback ends the settled pose is kept until a preset or another action takes
-  over — it does not snap upright, and moving a slider only freezes the take and
-  moves that one joint. Back Flip leans back, puts its
-  head on the floor, rolls over it and settles supine at about 83°; Front Flip
-  is the same track mirrored in X, touches down forwards and settles forward,
-  up on its feet at about −83°; Keep Rolling Backward touches down around 6.4 s
-  and ends on its back.
+  and the opaque floor hides a forearm that passes through it. Every flip's
+  last keyframe is neutral, so the free solve would snap the body upright at
+  the file's end; instead the root is blended from the solve back to the
+  neutral standing root over the final segment (starting at the last non-neutral
+  keyframe), with the pelvis height solved so the lowest body hull stays on the
+  floor. `FLIP_SETTLE = 1.5 s` then holds that standing pose. The readout and
+  deep links still count only the measured file clock, and moving a slider only
+  freezes the take and moves that one joint. Back Flip leans back, puts its head
+  on the floor at about 2.05 s, rolls over it and lies on its back from about
+  2.6 s to 5.7 s (about 74° of pitch, head clear, feet raised by the bent
+  knees), then stands up as the last keyframe arrives at 6.47 s. Front Flip is
+  the same track mirrored in X: it tips to within about 4 cm of its head at
+  2.52 s — the measured clock leaves it short of the floor — and stands back up
+  by 8.67 s. Keep Rolling Backward puts its head down at about 3.3 s, lies on
+  its back for most of its 17.9 s, and also stands up at the end.
 * **How often a routine repeats** — the file marks the block that repeats but
   never how many times, and the robot's own count is not readable over BLE
   either. `--repeat 3` on Push Ups is the observed behaviour (three pumps, the
@@ -353,7 +366,7 @@ and digits, which is also what the browser exposes on each `<option>`:
 | `#run/pushups/0.854` | the deepest hinge |
 | `#run/pushups/3.035` | the first deep pump |
 | `#run/playdead/8.0` | halfway through the 16.781 s Play Dead |
-| `#run/backflip/1.8` | Back Flip's head touch, mid-roll |
+| `#run/backflip/2.05` | Back Flip's head touch, mid-roll |
 | `#run/lookleft` | starts the card-only 1.375 s look |
 
 ### Comparing with the real robot
@@ -381,18 +394,56 @@ saved across a reload.
 `copy` produces one JSON object (`format: "k1-record/1"`) ready to paste into a
 report; nothing leaves the machine on its own. Clicking a mark puts the take
 back on that second with the file's pose and root, and the bar under the move
-list can be dragged to any other second, so a note like "head touches at 1.3 s"
+list can be dragged to any other second, so a note like "head touches at 2.05 s"
 can be checked against the model immediately. A mark without a `pose`
 key is the model's own pose — it is not evidence that the robot agreed. The
 BLE interface has no return channel, so this is the only way the real robot's
 behaviour gets into the repo, and it is a human observation, not a measurement.
+
+### Back Flip: what the owner saw, and what the file says
+
+The display was built to the owner's account: *"for the back flip the robot
+leans back and it touches the floor with the head in order roll over to the
+back"*, and at about **1.3–1.5 s** *"the robot is completely bending to the
+back so that it falls over by its own weight on its head stabalized left and
+right by the arms"*. Later in the same movement: *"head, and both arms form a
+triangle on the floor"*.
+
+A mark taken during that take (on the page clock of the time, before the timing
+change, so its seconds are not the current ones) recorded `t = 1.265 s`,
+`lean = 101.7°` and `diff = 7`. The two thighs, two calves, two ankles and the
+two shoulders were dialled away from the file. The corrected thighs point the
+opposite way from the file's tuck (left 41 against about 220, right 200 against
+about 20, in raw counts), while the calves and ankles sit within about 10 counts
+of it. Read that as a stiff topple: the robot fell on its own weight with its
+legs extended and its arms out, not as the tight tuck the bytes describe. The
+note on the mark is the owner's; the model's own measurement at that page second
+is not evidence of the robot's pose.
+
+Two limits are worth stating plainly:
+
+* the page clock and the file clock are not the same clock. The measured trace
+  puts the first keyframe at 1.078 s and the head-down beat at about 2.05 s;
+  the owner's 1.3–1.5 s estimate is earlier than that. An app clock that
+  started counting at the first keyframe would put the head-down beat at
+  0.97 s, so excluding the lead-in does not explain the estimate either. Treat
+  the seconds as approximate until the same take is filmed and counted.
+* the arms are not part of the flip's contact solve. At 1.9 s the model's hands
+  are already below the floor — the opaque floor hides them — whereas the owner
+  saw both hands and the head forming a load-bearing triangle. The gross
+  motion (lean, head contact, roll onto the back, stand) matches; the arm
+  support does not, and adding it needs an arm IK the model does not have.
+
+The file-side evidence for the motion is the progress trace, not the owner's
+clock: `backflip` has ten records, the head-down keyframe arrives at 2.0 s, and
+the measured clock ends at 6.469 s, after which the display rises to standing.
 
 ## Verifying without a browser
 Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor and settles supine, Front Flip mirrors it forwards, Keep Rolling Backward ends on its back, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take without standing a flip up), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, and a keystroke typed into a text field no longer fires the shortcuts |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take without standing a flip up), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, and a keystroke typed into a text field no longer fires the shortcuts |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

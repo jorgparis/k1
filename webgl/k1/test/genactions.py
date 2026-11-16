@@ -17,6 +17,14 @@ Timing provenance, strongest first:
              The UI says "estimated", so it is never mistaken for a measurement.
   unavailable no .sh exists on the card (four spec actions are like this)
 
+The total clock and the *keyframe* clock are separate facts. The total is the
+provenance above. Each keyframe's arrival comes from ``test/timings.json``
+where the robot's progress trace has one sample per record - that is the
+robot's own clock - and otherwise from the measured travel table in
+``tools/shdecode.py`` (byte 28, plus byte 29's dwell). The old model timed a
+keyframe by how far the joints moved; the robot does not, and it made the demo
+redistribute a take's phases while still hitting the right total.
+
 Every entry also keeps ``repeat``, ``contact`` and ``flip`` where the bytes do
 not say them: Push Ups stores one pump and the robot pumps three times, and it
 rests on its palms as well as its toes. The seated moves get ``contact: "seat"``
@@ -59,6 +67,8 @@ def default_k1() -> Path:
 
 DEFAULT_K1 = default_k1()
 EST_MS_PER_RECORD = 700
+TIMINGS = HERE / "test" / "timings.json"
+DEFAULT_BENCH = DEFAULT_K1 / "build" / "bench" / "all68.json"
 
 # Moves whose body is on the floor for at least part of the take. A floor sit
 # cannot be stood on flat soles, so the display needs to know to seat it.
@@ -117,6 +127,61 @@ def index_scripts(k1: Path, shdecode) -> dict[str, Path]:
     return by_norm
 
 
+def load_timings(path: Path, shdecode) -> dict[str, dict]:
+    """The robot's own keyframe clock, where it has one.
+
+    The bot reports `progress` after every record. When a trace has exactly one
+    sample per record, those timestamps *are* the arrival times of the
+    keyframes - no model needed. A repeated block reports extra samples at the
+    same progress (a plateau), so those actions are left to shdecode's measured
+    table. The stored file is sanitised: names and milliseconds only.
+    """
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {shdecode.norm(v["name"]): v for v in data.get("actions", {}).values()}
+
+
+def write_timings(bench: Path, out: Path, shdecode, by_norm) -> tuple[int, int]:
+    """Snapshot the 1:1 progress traces from a bench run, without its notes.
+
+    `build/bench/all68.json` carries the robot's serial in its free-text
+    `note`, so it is never committed. This writes the part the demo needs -
+    `name`, `records`, `firmware_ms`, `trace` - to the tracked timings file.
+    """
+    data = json.loads(bench.read_text(encoding="utf-8"))
+    actions: dict[str, dict] = {}
+    skipped = 0
+    for row in data.get("rows", []):
+        trace = row.get("trace") or []
+        path = by_norm.get(shdecode.norm(row["name"]))
+        if not path or not trace:
+            skipped += 1
+            continue
+        records = len(path.read_bytes()) // 32
+        if len(trace) != records:
+            skipped += 1
+            continue
+        actions[shdecode.norm(row["name"])] = {
+            "name": row["name"],
+            "records": records,
+            "firmware_ms": int(round(row["firmware_ms"])),
+            "trace": [int(round(p[0])) for p in trace],
+        }
+    doc = {
+        "format": "k1-timings/1",
+        "note": ("Keyframe arrival times as the robot itself reported them: one "
+                 "progress sample per record. Only actions whose trace is 1:1 "
+                 "are here; a repeated block reports plateaus and uses "
+                 "shdecode's measured table instead. Regenerate with "
+                 "`python3 test/genactions.py --write-timings <bench.json>`."),
+        "source": "progress traces recorded from the robot",
+        "actions": dict(sorted(actions.items())),
+    }
+    out.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
+    return len(actions), skipped
+
+
 def measured_ms_per_record(phone, shdecode, spec, by_norm: dict[str, Path]) -> float:
     """Median ms/record of the card-only moves that *were* timed on hardware."""
     values = []
@@ -135,6 +200,7 @@ def measured_ms_per_record(phone, shdecode, spec, by_norm: dict[str, Path]) -> f
 def build(k1: Path) -> tuple[dict, list[str]]:
     phone, shdecode, spec = load_k1(k1)
     by_norm = index_scripts(k1, shdecode)
+    timings = load_timings(TIMINGS, shdecode)
     per_record = measured_ms_per_record(phone, shdecode, spec, by_norm)
 
     actions: dict[str, dict] = {}
@@ -185,6 +251,15 @@ def build(k1: Path) -> tuple[dict, list[str]]:
             repeat = 3 if key == "pushups" else 1
             dec = shdecode.decode(path, duration_ms, contact, repeat)
             entry["frames"] = dec["frames"]
+            trace = timings.get(key)
+            if trace and len(trace["trace"]) == len(entry["frames"]):
+                tr = trace["trace"]
+                scale = duration_ms / tr[-1] if tr[-1] else 1.0
+                for frame, ms in zip(entry["frames"], tr):
+                    frame["t"] = round(ms * scale / 1000, 3)
+                entry["timing"] = "trace"
+            else:
+                entry["timing"] = "table"
             if key in FLIP_MOVES:
                 entry["flip"] = FLIP_MOVES[key]
             if "contact" in dec:
@@ -211,7 +286,10 @@ def render(actions: dict, order: list[str]) -> str:
         "",
         "   One entry per move the phone page can play. `frames` are decoded from",
         "   the bytes (magnitude, speed, tag); `t` is when each keyframe is",
-        "   reached and ends exactly on `duration_ms`.",
+        "   reached and ends exactly on `duration_ms`. `timing` says where those",
+        "   arrivals come from: \"trace\" is the robot's own progress report, one",
+        "   sample per record; \"table\" is the measured travel table in",
+        "   tools/shdecode.py, used where a repeated block breaks the 1:1 trace.",
         "",
         "   `clock` is the timing provenance, not a guess dressed up as data:",
         "     measured   timed on the robot",
@@ -260,10 +338,21 @@ def main(argv=None) -> int:
                     help=f"the k1 checkout (default {DEFAULT_K1})")
     ap.add_argument("--out", type=Path, default=HERE / "src" / "actions.js",
                     help="where to write the generated module")
+    ap.add_argument("--bench", type=Path, default=DEFAULT_BENCH,
+                    help="a bench run (all68.json) to snapshot with --write-timings")
+    ap.add_argument("--write-timings", type=Path, nargs="?", const=TIMINGS,
+                    metavar="PATH",
+                    help=f"rewrite the sanitised keyframe traces (default {TIMINGS})")
     args = ap.parse_args(argv)
 
     if not (args.k1 / "tools" / "phone.py").is_file():
         raise SystemExit(f"{args.k1} is not a k1 checkout (no tools/phone.py)")
+    if args.write_timings:
+        _, shdecode, _ = load_k1(args.k1)
+        by_norm = index_scripts(args.k1, shdecode)
+        kept, skipped = write_timings(args.bench, args.write_timings, shdecode, by_norm)
+        print(f"wrote {args.write_timings}  ({kept} actions with a 1:1 trace, "
+              f"{skipped} left to the table)")
     actions, order = build(args.k1)
     text = render(actions, order)
     args.out.write_text(text, encoding="utf-8")

@@ -1,0 +1,413 @@
+{
+ "format": "k1-timings/1",
+ "note": "Keyframe arrival times as the robot itself reported them: one progress sample per record. Only actions whose trace is 1:1 are here; a repeated block reports plateaus and uses shdecode's measured table instead. Regenerate with `python3 test/genactions.py --write-timings <bench.json>`.",
+ "source": "progress traces recorded from the robot",
+ "actions": {
+  "backflip": {
+   "name": "Back Flip",
+   "records": 10,
+   "firmware_ms": 6469,
+   "trace": [
+    1078,
+    1687,
+    2000,
+    2453,
+    3250,
+    3844,
+    4156,
+    4875,
+    5672,
+    6469
+   ]
+  },
+  "battlestate": {
+   "name": "Battle State",
+   "records": 2,
+   "firmware_ms": 1750,
+   "trace": [
+    1141,
+    1750
+   ]
+  },
+  "bendback": {
+   "name": "Bend Back",
+   "records": 7,
+   "firmware_ms": 9453,
+   "trace": [
+    750,
+    2000,
+    2781,
+    6672,
+    7391,
+    8188,
+    9453
+   ]
+  },
+  "bowplease": {
+   "name": "Bow, Please",
+   "records": 3,
+   "firmware_ms": 5703,
+   "trace": [
+    687,
+    4766,
+    5703
+   ]
+  },
+  "crossarms": {
+   "name": "Cross Arms",
+   "records": 2,
+   "firmware_ms": 1765,
+   "trace": [
+    1156,
+    1765
+   ]
+  },
+  "crouchdown": {
+   "name": "Crouch Down",
+   "records": 5,
+   "firmware_ms": 6797,
+   "trace": [
+    750,
+    1750,
+    4844,
+    5781,
+    6797
+   ]
+  },
+  "defendtheenemies": {
+   "name": "Defend The Enemies",
+   "records": 8,
+   "firmware_ms": 7406,
+   "trace": [
+    921,
+    1234,
+    2250,
+    3046,
+    4171,
+    5281,
+    6593,
+    7406
+   ]
+  },
+  "fireinthehole": {
+   "name": "Fire In The Hole",
+   "records": 4,
+   "firmware_ms": 7453,
+   "trace": [
+    1157,
+    1953,
+    6719,
+    7453
+   ]
+  },
+  "frontflip": {
+   "name": "Front Flip",
+   "records": 13,
+   "firmware_ms": 8672,
+   "trace": [
+    922,
+    1375,
+    1985,
+    2781,
+    3391,
+    3688,
+    4141,
+    4953,
+    5656,
+    6266,
+    7078,
+    7875,
+    8672
+   ]
+  },
+  "handstand": {
+   "name": "Handstand",
+   "records": 17,
+   "firmware_ms": 15734,
+   "trace": [
+    2593,
+    3187,
+    3640,
+    4250,
+    4703,
+    5171,
+    5765,
+    6390,
+    10468,
+    11000,
+    11640,
+    12234,
+    12687,
+    13140,
+    14125,
+    14937,
+    15734
+   ]
+  },
+  "horsestance": {
+   "name": "Horse Stance",
+   "records": 4,
+   "firmware_ms": 7781,
+   "trace": [
+    750,
+    3828,
+    6828,
+    7781
+   ]
+  },
+  "kneelplease": {
+   "name": "Kneel,Please",
+   "records": 3,
+   "firmware_ms": 8047,
+   "trace": [
+    922,
+    6610,
+    8047
+   ]
+  },
+  "laydown": {
+   "name": "Lay Down",
+   "records": 14,
+   "firmware_ms": 15250,
+   "trace": [
+    750,
+    1547,
+    2344,
+    3156,
+    3953,
+    4750,
+    9844,
+    10563,
+    11016,
+    11813,
+    12625,
+    13219,
+    14219,
+    15250
+   ]
+  },
+  "layfacedown": {
+   "name": "Lay Face Down",
+   "records": 11,
+   "firmware_ms": 12672,
+   "trace": [
+    766,
+    1766,
+    2375,
+    3375,
+    3985,
+    7672,
+    8219,
+    9000,
+    10422,
+    11422,
+    12672
+   ]
+  },
+  "leanback": {
+   "name": "Lean Back",
+   "records": 3,
+   "firmware_ms": 5734,
+   "trace": [
+    1156,
+    5015,
+    5734
+   ]
+  },
+  "leanforward": {
+   "name": "Lean Forward",
+   "records": 3,
+   "firmware_ms": 5734,
+   "trace": [
+    1140,
+    5015,
+    5734
+   ]
+  },
+  "leftkick": {
+   "name": "Left Kick",
+   "records": 6,
+   "firmware_ms": 5438,
+   "trace": [
+    781,
+    1391,
+    2203,
+    4219,
+    4828,
+    5438
+   ]
+  },
+  "leftpunch": {
+   "name": "Left Punch",
+   "records": 2,
+   "firmware_ms": 781,
+   "trace": [
+    594,
+    781
+   ]
+  },
+  "playcool": {
+   "name": "Play Cool",
+   "records": 4,
+   "firmware_ms": 8891,
+   "trace": [
+    750,
+    1359,
+    7453,
+    8891
+   ]
+  },
+  "playdead": {
+   "name": "Play Dead",
+   "records": 15,
+   "firmware_ms": 16781,
+   "trace": [
+    672,
+    1687,
+    2312,
+    3312,
+    3922,
+    4547,
+    5156,
+    10328,
+    10875,
+    11484,
+    12093,
+    13109,
+    14328,
+    15531,
+    16781
+   ]
+  },
+  "pretendtofart": {
+   "name": "Pretend To Fart",
+   "records": 5,
+   "firmware_ms": 4500,
+   "trace": [
+    765,
+    2171,
+    2781,
+    3703,
+    4500
+   ]
+  },
+  "propose": {
+   "name": "Propose",
+   "records": 4,
+   "firmware_ms": 18281,
+   "trace": [
+    734,
+    7328,
+    16843,
+    18281
+   ]
+  },
+  "rightkick": {
+   "name": "Right Kick",
+   "records": 6,
+   "firmware_ms": 5422,
+   "trace": [
+    750,
+    1375,
+    2188,
+    4188,
+    4813,
+    5422
+   ]
+  },
+  "rightpunch": {
+   "name": "Right Punch",
+   "records": 2,
+   "firmware_ms": 781,
+   "trace": [
+    578,
+    781
+   ]
+  },
+  "swingleft": {
+   "name": "Swing Left",
+   "records": 2,
+   "firmware_ms": 1531,
+   "trace": [
+    937,
+    1531
+   ]
+  },
+  "swingright": {
+   "name": "Swing Right",
+   "records": 2,
+   "firmware_ms": 1562,
+   "trace": [
+    953,
+    1562
+   ]
+  },
+  "takeapee": {
+   "name": "Take A Pee",
+   "records": 3,
+   "firmware_ms": 6156,
+   "trace": [
+    1141,
+    5219,
+    6156
+   ]
+  },
+  "takeapoop": {
+   "name": "Take A Poop",
+   "records": 4,
+   "firmware_ms": 7406,
+   "trace": [
+    1141,
+    2156,
+    6234,
+    7406
+   ]
+  },
+  "takeaseat": {
+   "name": "Take A Seat",
+   "records": 11,
+   "firmware_ms": 13047,
+   "trace": [
+    750,
+    1750,
+    2375,
+    2985,
+    7656,
+    8594,
+    9203,
+    10219,
+    11000,
+    11797,
+    13047
+   ]
+  },
+  "tiltleft": {
+   "name": "Tilt Left",
+   "records": 2,
+   "firmware_ms": 1734,
+   "trace": [
+    1140,
+    1734
+   ]
+  },
+  "tiltright": {
+   "name": "Tilt Right",
+   "records": 2,
+   "firmware_ms": 1766,
+   "trace": [
+    1156,
+    1766
+   ]
+  },
+  "yield": {
+   "name": "Yield",
+   "records": 3,
+   "firmware_ms": 5937,
+   "trace": [
+    922,
+    5015,
+    5937
+   ]
+  }
+ }
+}

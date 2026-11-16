@@ -8,19 +8,15 @@ The format, as far as the 131 scripts on the card prove it:
                      Robosen models); ignored for the K1
       bytes  4..20   the 17 servos, in `robot.json` index order
       byte  21..27   unused (zero)
-      byte  28       speed for this keyframe (1..100; the app defaults are 30..40)
-      byte  29       emphasis at this keyframe, relative to that keyframe's
-                     own time - *not* an absolute dwell. The value never
-                     exceeds 85 anywhere on the card, and the same value is
-                     reused in actions of very different length: 45 sits on
-                     the same cannon pose in `Open Fire` (1400 ms) and
-                     `Fire In The Hole` (7400 ms), and the same kneel pose
-                     carries 35 in `Kneel, Please` but 50 in `Propose`. A
-                     run of records with a non-zero value is also the block
-                     a routine repeats - `Swing Arms` 1..4 is A,B,A,B,
-                     `Twist Butt` 1..6 is A,B,A,B,A,B, `Push Ups` 4..6 is
-                     A,B,A - but the *count* is nowhere in the file, so
-                     `--repeat` supplies it
+      byte  28       travel time for the move onto this keyframe (1..100; the
+                     app defaults are 30..40). A *larger* value is a *slower*
+                     move; see `TRAVEL_MS` below.
+      byte  29       dwell at this keyframe: each unit adds about 100 ms to the
+                     move that arrives at it (`FLAG_MS`). A run of records with
+                     a non-zero value is also the block a routine repeats -
+                     `Swing Arms` 1..4 is A,B,A,B, `Twist Butt` 1..6 is
+                     A,B,A,B,A,B, `Push Ups` 4..6 is A,B,A - but the *count* is
+                     nowhere in the file, so `--repeat` supplies it
       bytes 30..31   record tag: `0b xx` first record (xx = action id),
                      `fc fc` a normal keyframe, `fb fb` the last one
 
@@ -36,22 +32,26 @@ So a slot is not a servo position, it is "how far to move, in counts". Which
 way is the model's business (see `K1.ACTION_DIR` in the demo's
 `~/echange/k1/src/k1.js`); the file only says how much.
 
-Keyframe arrival times are not stored, so this tool derives them: each keyframe
-takes `max joint change / speed`, and the whole action is scaled to the declared
-duration from `robot.json` (or `--duration-ms`). That reproduces the declared
-9.6 s for Push Ups while keeping the fast frames fast.
+Keyframe arrival times are not stored, so this tool derives them - and the
+derivation is measured, not assumed. The robot reports `progress` after every
+record, so a recorded bench trace is a direct read of when each keyframe is
+reached. Across 150 clean record boundaries the segment length is *not* a
+function of how far the joints travel (that correlation is ~0): it is a
+function of byte 28 alone, one whole 64 Hz tick table, and a *larger* byte is a
+*longer* move - `Left Punch` strikes on 25 and returns on 15. The byte is
+therefore a smoothness/slowness setting, whatever the app calls it; the table is
+`TRAVEL_MS` below. Byte 29, the "emphasis", does have a unit after all: each
+unit adds about 100 ms to the move that arrives at that keyframe (`Propose`
+record 2 is exactly its 1.0 s base plus 85 units). The first record is a
+lead-in of the same 1.0 s plus ~0.1 s.
 
-Byte 29 has no unit of its own. It is an emphasis on one keyframe, so it
-lengthens the move *away* from that keyframe by that percentage of the move's own
-time, and the action is then rescaled to its declared clock. That is why a
-dwell-heavy action (`Bow`, `Propose`, `Do Squats`) still lands on its declared
-total, and why `Play Dead` can lie still and stretch inside 1.68 s. Reading the
-byte as "0.1 s per unit" is ruled out by the card itself: it would make
-`Play Dead` 6.6 s and `Open Fire` 7.3 s against their declared 1.68 s and 1.4 s,
-while the same value 45 appears in actions of 1.4 s and 7.4 s. The exact base the
-percentage is taken of cannot be recovered from bytes alone; stretching that
-move is how an absolute clock can honour a relative emphasis without inserting a
-frozen duplicate of the pose.
+That model reproduces the robot's own totals to 98-99 % on every one-shot
+action. It still cannot know a repeat count (`--repeat`), so a repeated block
+rescaled to its measured total can still be off; the demo prefers the bench
+trace itself where one exists. The old model - `max joint change / speed`,
+rescaled to the declared clock - is what made the demo's Back Flip redistribute
+its phases: its file clock was right, but the arms' 1 s heave and a 0.3 s step
+were swapped.
 
 A byte is always a position, including 0: the servo goes back to neutral.
 That looks wrong in Push Ups, whose pump block stores 0 on both thighs while
@@ -88,6 +88,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -111,6 +112,19 @@ ORDER = [
     "leftArm", "leftHand", "rightArm", "rightHand",
     "head",
 ]
+
+# Measured travel time of the move onto a keyframe, by byte 28. Medians of 150
+# clean record boundaries in the robot's own progress traces; a larger byte is
+# a slower move (`Left Punch` strikes on 25 and returns on 15).
+TRAVEL_MS = {
+    15: 196, 20: 312, 25: 453, 30: 609, 35: 797, 40: 1000, 45: 1250, 50: 1438,
+}
+# Byte 29 adds time after all: ~100 ms per unit (Propose record 2 is 1000 ms of
+# base plus 85 units, 9515 ms measured).
+FLAG_MS = 100
+# The first record arrives one base move plus this much after the command; the
+# robot's own traces put the lead-in at base + 78..141 ms.
+LEAD_MS = 110
 
 
 class ShFormatError(Exception):
@@ -148,39 +162,59 @@ def frames(path: Path) -> dict:
     return {"name": path.stem, "folder": path.parent.name, "records": out}
 
 
+def travel_ms(speed: int) -> float:
+    """How long the move onto a keyframe carrying `speed` takes, in ms.
+
+    Measured, not invented: the medians of 150 clean record boundaries in the
+    robot's own progress traces (speeds 15..50). Every measured value sits on
+    a whole 64 Hz tick (15.625 ms), which is why individual samples land a tick
+    either side of the median.
+
+    The table is a smooth curve - T ~ 2.11 * speed^(5/3) fits it within a
+    couple of percent - so speeds between the measured points interpolate
+    geometrically and speeds outside them follow that curve. The result is
+    only ever used as a weight and then rescaled to the action's measured
+    clock, so the shape is what matters, not the absolute millisecond.
+    """
+    s = max(1, int(speed))
+    keys = sorted(TRAVEL_MS)
+    if s in TRAVEL_MS:
+        return float(TRAVEL_MS[s])
+    if keys[0] < s < keys[-1]:
+        lo = max(k for k in keys if k < s)
+        hi = min(k for k in keys if k > s)
+        u = (math.log(s) - math.log(lo)) / (math.log(hi) - math.log(lo))
+        a, b = math.log(TRAVEL_MS[lo]), math.log(TRAVEL_MS[hi])
+        return math.exp(a + u * (b - a))
+    return 2.11 * s ** (5.0 / 3.0)
+
+
 def durations(fr: dict, total_ms: int) -> list[int]:
     """When each keyframe is *reached*, in ms.
 
-    Stored timing is not in the file, so this is derived, not decoded. It is the
-    one number in the output that does not come from the bytes.
-
-    Frame 0 is the pose the action starts from, so it is reached at t=0. Every
-    later frame takes `max joint change / speed` of the remaining clock, which
-    keeps a slow frame slow and a fast one fast instead of spreading the time
-    evenly. Without the per-frame speed the arms' 40-count snap and the legs'
-    110-count heave would take the same time, and the result reads as a slide.
-
-    Byte 29 adds an emphasis, not milliseconds: the move away from a marked
-    keyframe takes that much longer, and the action is then rescaled to
-    `total_ms`, so the emphasis redistributes time inside the declared clock
-    instead of overrunning it. The percentage's base is not recoverable from the
-    bytes (see the module docstring), but the card proves it is relative: the
-    same 45 is used in a 1400 ms action and a 7400 ms one.
+    Stored timing is not in the file, so this is derived - but from the robot's
+    own measured travel table, not from joint distance. See `travel_ms` and the
+    module docstring: the move onto a keyframe is timed by byte 28 (larger =
+    slower), byte 29 adds `FLAG_MS` per unit, and the first record is a lead-in
+    of the same base plus `LEAD_MS`. The weights are rescaled to `total_ms` so
+    the action still lands exactly on its measured/declared clock; that keeps
+    the shape honest without pretending the model beats the measurement.
     """
     recs = fr["records"]
-    weights = [0.0]
-    for a, b in zip(recs, recs[1:]):
-        delta = max(abs(b["mag"][n] - a["mag"][n]) for n in ORDER)
-        move = delta / max(1, b["speed"])
-        weights.append(move * (1 + a["flags"] / 100))
+    weights = []
+    for k, r in enumerate(recs):
+        w = travel_ms(r["speed"]) + FLAG_MS * r["flags"]
+        if k == 0:
+            w += LEAD_MS
+        weights.append(w)
     if not any(weights):
-        weights = [i / max(1, len(recs) - 1) for i in range(len(recs))]
+        weights = [1.0 for _ in recs]
     unit = total_ms / sum(weights)
-    arrived, t = [], 0
+    arrived, t = [], 0.0
     for w in weights:
         t += w * unit
         arrived.append(int(round(t)))
-    arrived[-1] = total_ms                     # land exactly on the declared clock
+    arrived[-1] = total_ms                     # land exactly on the measured clock
     return arrived
 
 

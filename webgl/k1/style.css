@@ -213,13 +213,17 @@ body { display: flex; align-items: center; justify-content: center; }
   color: #3f516b; letter-spacing: .04em; font-size: 9.5px;
   max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-#recNote {
+#recNote, #recPaste {
   width: 100%; margin: 0 0 4px; padding: 3px 5px;
   font: inherit; font-size: 10px; color: #dbe7f6;
   background: #0a0e18; border: 1px solid #27384e; outline: none;
 }
-#recNote:focus { border-color: #ff9ecb; }
-#recNote::placeholder { color: #3f516b; }
+#recNote:focus, #recPaste:focus { border-color: #ff9ecb; }
+#recNote::placeholder, #recPaste::placeholder { color: #3f516b; }
+#recPaste { resize: none; min-height: 44px; margin-top: 2px; }
+#recPaste[hidden] { display: none; }
+#recCopied { display: block; color: #ffb03c; font-size: 9.5px; line-height: 1.2; }
+#recCopied:empty { display: none; }
 #rec .recLine { display: flex; gap: 4px; }
 #recList { max-height: 58px; overflow-y: auto; margin-top: 4px; }
 #recList::-webkit-scrollbar { width: 6px; }

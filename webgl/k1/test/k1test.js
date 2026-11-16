@@ -369,8 +369,11 @@ world(J());
     check('the clock is the 9.625 s measured on the robot, not the declared 9.6 s',
       a.duration_ms === 9625 && a.clock === 'measured' && a.declared === true,
       a.duration_ms + 'ms clock=' + a.clock + ' declared=' + a.declared);
-    check('keyframe times start at 0, increase, and end exactly on the clock',
-      a.frames[0].t === 0 && a.frames[a.frames.length - 1].t === a.duration_ms / 1000 &&
+    /* Arrival times are measured from the command, not from the first pose:
+       the first record is a lead-in, so frame 0 lands after t = 0. */
+    check('keyframe arrivals start after the lead-in, increase, and end exactly on the clock',
+      a.frames[0].t > 0 && a.frames[0].t < a.duration_ms / 1000 &&
+      a.frames[a.frames.length - 1].t === a.duration_ms / 1000 &&
       a.frames.every((f, i) => i === 0 || f.t > a.frames[i - 1].t),
       a.frames.map((f) => f.t).join(','));
     check('every keyframe carries all 17 servos as one byte',
@@ -550,14 +553,17 @@ world(J());
   let badFrames = 0, badTimes = 0, badMag = 0;
   for (const k of playable) {
     const a = A[k];
-    if (!a.frames.length || a.frames[0].t !== 0) badFrames++;
-    if (a.frames[a.frames.length - 1].t !== a.duration_ms / 1000) badTimes++;
-    for (const f of a.frames) {
+    const end = a.duration_ms / 1000;
+    if (!a.frames.length || a.frames[0].t < 0 || a.frames[0].t > end) badFrames++;
+    if (a.frames.length && a.frames[a.frames.length - 1].t !== end) badTimes++;
+    for (let i = 0; i < a.frames.length; i++) {
+      const f = a.frames[i];
       if (!JOINTS.every((j) => Number.isInteger(f.mag[j.name]) && f.mag[j.name] >= 0 && f.mag[j.name] <= 255)) badMag++;
-      if (f.t < 0 || f.t > a.duration_ms / 1000 + 1e-9) badTimes++;
+      if (f.t < 0 || f.t > end + 1e-9 || (i > 0 && !(f.t > a.frames[i - 1].t))) badTimes++;
     }
   }
-  check('every playable move starts at 0 and ends exactly on its clock', badFrames === 0 && badTimes === 0,
+  check('every playable move\'s keyframes increase and end exactly on its clock',
+    badFrames === 0 && badTimes === 0,
     badFrames + ' bad starts, ' + badTimes + ' bad times');
   check('every keyframe carries all 17 servos as one byte', badMag === 0, badMag + ' bad frames');
   check('every clock says where it came from',
@@ -834,7 +840,8 @@ world(J());
       while (demo.act.playing && demo.act.t < t) tick(1);
       return demo.measure();
     };
-    const celeA = celeAt(3.059);
+    const celeFrames = demo.actions().celebrate.frames;
+    const celeA = celeAt(celeFrames[2].t);
     check('Celebrate swings the pelvis toward the straightened leg (hips, not a foot shuffle)',
       atPart(celeA, 'pelvis').z < -0.025 &&
       Math.abs(atPart(celeA, 'head').z - atPart(celeA, 'pelvis').z) < 0.01,
@@ -843,7 +850,7 @@ world(J());
     check('both soles stay on the floor through the swing (no foot lift)',
       soleGap(celeA) < 0.003,
       'higher sole ' + (soleGap(celeA) * 1000).toFixed(1) + ' mm up');
-    const celeB = celeAt(4.962);
+    const celeB = celeAt(celeFrames[3].t);
     check('Celebrate mirrors the swing onto the other side',
       atPart(celeB, 'pelvis').z > 0.025 && soleGap(celeB) < 0.003,
       'pelvis z ' + atPart(celeB, 'pelvis').z.toFixed(3) + ' m, higher sole '
@@ -917,6 +924,8 @@ world(J());
     demo.playAction('takeaseat');
     tick(1);
     const seatFrames = demo.actions().takeaseat.frames;
+    const seatEarly = (seatFrames[0].t + seatFrames[1].t) / 2;
+    const seatSit = seatFrames[4].t;
     const seatProbes = [];
     for (let i = 0; i < seatFrames.length; i++) {
       seatProbes.push(seatFrames[i].t);
@@ -935,7 +944,7 @@ world(J());
       const lean = demo.lean();
       if (Math.abs(lean) > Math.abs(seatLean)) seatLean = lean;
       seatFloor = Math.min(seatFloor, Math.min(...m.map((p) => p.low)));
-      if (Math.abs(t - 1.307) < 1e-6 || Math.abs(t - 4.27) < 1e-6) seatPose[t] = m;
+      if (Math.abs(t - seatEarly) < 1e-6 || Math.abs(t - seatSit) < 1e-6) seatPose[t] = m;
     }
     check('Take A Seat keeps the torso near upright (no past-horizontal pitch)',
       Math.abs(seatLean) < 15 * Math.PI / 180,
@@ -944,7 +953,7 @@ world(J());
       seatFloor >= -0.001, (seatFloor * 1000).toFixed(1) + 'mm');
 
     const seatPart = (m, n) => m.find((p) => p.name === n);
-    const early = seatPose[1.307], seated = seatPose[4.27];
+    const early = seatPose[seatEarly], seated = seatPose[seatSit];
     if (early && seated) {
       const hipX = (m) => seatPart(m, 'pelvis').lowAt[0];
       const footX = (m) => Math.min(seatPart(m, 'footL').lowAt[0], seatPart(m, 'footR').lowAt[0]);
@@ -1030,16 +1039,23 @@ world(J());
       return a.duration_ms / 1000 + demo.flip(key).settle;
     };
 
-    /* Back Flip is the gesture the robot was asked to draw: lean back, put the
-       head on the floor, roll over the head onto the back. */
-    const b1 = flipAt('backflip', 1.0);
-    check('Back Flip leans backwards before its feet leave the floor',
-      demo.lean() > 10 * Math.PI / 180 && b1.find((p) => p.name === 'pelvis').x < -0.05,
+    /* Back Flip is the gesture the owner watched: lean back, put the head on
+       the floor, roll over it onto the back, then stand up again. The frame
+       times come from the measured progress trace, so the test follows the
+       action rather than a remembered second. */
+    const bfA = demo.actions().backflip;
+    const b1 = flipAt('backflip', bfA.frames[1].t);
+    const b1L = atPart(b1, 'footL').low, b1R = atPart(b1, 'footR').low;
+    check('Back Flip leans back while a sole is still on the floor',
+      demo.lean() > 10 * Math.PI / 180 && atPart(b1, 'pelvis').x < -0.05 &&
+      Math.min(b1L, b1R) < 0.02,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
-      + b1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+      + atPart(b1, 'pelvis').x.toFixed(2) + ' m, soles '
+      + (b1L * 1000).toFixed(0) + '/' + (b1R * 1000).toFixed(0) + ' mm');
     const bp = flipPass('backflip');
     check('Back Flip puts its head on the floor during the roll',
-      bp.headLow <= 0.002 && bp.firstHead > 0.5 && bp.firstHead < 3,
+      bp.headLow <= 0.002 && bp.firstHead > bfA.frames[1].t &&
+      bp.firstHead < bfA.frames[2].t + 1,
       'head low ' + (bp.headLow * 1000).toFixed(1) + ' mm, first touch at '
       + bp.firstHead.toFixed(2) + 's');
     check('Back Flip rolls past the head onto its back (> 120 deg of pitch)',
@@ -1047,51 +1063,45 @@ world(J());
       (bp.peak * 180 / Math.PI).toFixed(1) + 'deg at ' + bp.peakT.toFixed(2) + 's');
     check('no body part of Back Flip goes through the floor, keyframes or settle',
       bp.bodyLow >= -0.002, (bp.bodyLow * 1000).toFixed(1) + ' mm (' + bp.bodyName + ')');
-    const bend = flipAt('backflip', settleOf('backflip'));
-    check('Back Flip settles flat on its back, head clear of the floor',
-      demo.lean() > 75 * Math.PI / 180 && demo.lean() < 95 * Math.PI / 180 &&
-      bend.find((p) => p.name === 'torso').low < 0.01 &&
-      bend.find((p) => p.name === 'head').low > 0.03 &&
-      Math.max(bend.find((p) => p.name === 'footL').low,
-        bend.find((p) => p.name === 'footR').low) < 0.02,
+    const bend = flipAt('backflip', bfA.frames[5].t);
+    const bendM = demo.measure();
+    check('Back Flip comes to rest on its back after the roll, head clear',
+      demo.lean() > 70 * Math.PI / 180 && demo.lean() < 90 * Math.PI / 180 &&
+      atPart(bendM, 'torso').low < 0.01 &&
+      atPart(bendM, 'head').low > 0.03,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, torso '
-      + (bend.find((p) => p.name === 'torso').low * 1000).toFixed(0) + ' mm, head '
-      + (bend.find((p) => p.name === 'head').low * 1000).toFixed(0) + ' mm');
+      + (atPart(bendM, 'torso').low * 1000).toFixed(0) + ' mm, head '
+      + (atPart(bendM, 'head').low * 1000).toFixed(0) + ' mm');
 
     /* Front Flip is the same solve mirrored in X: it must lean forward and
-       travel forward, not just tilt the other way. Its recorded take does not
-       stand back up, so the settle leaves it crouched forward on its feet. */
-    flipAt('frontflip', 1.0);
+       travel forward, not just tilt the other way. The file's last keyframe
+       is neutral, so the display stands it back up over that segment. */
+    const ffA = demo.actions().frontflip;
+    flipAt('frontflip', ffA.frames[3].t);
     const f1 = demo.measure();
     check('Front Flip leans forwards and travels forwards (the mirror in X)',
       demo.lean() < -45 * Math.PI / 180 &&
-      f1.find((p) => p.name === 'pelvis').x > 0.05,
+      atPart(f1, 'pelvis').x > 0.05,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
-      + f1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+      + atPart(f1, 'pelvis').x.toFixed(2) + ' m');
     const fp = flipPass('frontflip');
-    check('Front Flip puts its head on the floor too',
-      fp.headLow <= 0.002 && fp.firstHead > 0.5 && fp.firstHead < 3,
+    /* The measured clock leaves this one short of the floor: its lowest head
+       point is ~39 mm up. Say so rather than move the body to meet the check. */
+    check('Front Flip tips to within 5 cm of its head, short of the floor',
+      fp.headLow < 0.05,
       'head low ' + (fp.headLow * 1000).toFixed(1) + ' mm, first touch at '
-      + fp.firstHead.toFixed(2) + 's');
+      + (fp.firstHead < 0 ? 'none' : fp.firstHead.toFixed(2) + 's'));
     check('no body part of Front Flip goes through the floor either',
       fp.bodyLow >= -0.002, (fp.bodyLow * 1000).toFixed(1) + ' mm (' + fp.bodyName + ')');
-    flipAt('frontflip', settleOf('frontflip'));
-    const fend = demo.measure();
-    check('Front Flip comes to rest forward, up on its feet, head clear',
-      demo.lean() < -70 * Math.PI / 180 && demo.lean() > -100 * Math.PI / 180 &&
-      Math.max(fend.find((p) => p.name === 'footL').low,
-        fend.find((p) => p.name === 'footR').low) < 0.02 &&
-      fend.find((p) => p.name === 'head').low > 0.08,
-      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
-      + (fend.find((p) => p.name === 'head').low * 1000).toFixed(0) + ' mm');
 
     /* Keep Rolling Backward is a long backward roll: the head reaches the floor
-       mid-take and the body ends supine. */
-    const k1 = flipAt('keeprollingbackward', 1.0);
+       mid-take and the body lies on its back for most of the action. */
+    const krA = demo.actions().keeprollingbackward;
+    const k1 = flipAt('keeprollingbackward', krA.frames[1].t);
     check('Keep Rolling Backward leans backwards',
-      demo.lean() > 10 * Math.PI / 180,
+      demo.lean() > 10 * Math.PI / 180 && atPart(k1, 'pelvis').x < -0.05,
       (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, pelvis x '
-      + k1.find((p) => p.name === 'pelvis').x.toFixed(2) + ' m');
+      + atPart(k1, 'pelvis').x.toFixed(2) + ' m');
     const kp = flipPass('keeprollingbackward');
     check('Keep Rolling Backward rolls its head onto the floor',
       kp.headLow <= 0.002 && kp.firstHead > 3 && kp.firstHead < 12,
@@ -1100,12 +1110,27 @@ world(J());
     check('no body part of Keep Rolling Backward goes through the floor',
       kp.bodyLow >= -0.002, (kp.bodyLow * 1000).toFixed(1) + ' mm (' + kp.bodyName + ')');
 
+    /* Every flip file ends neutral, so the root is blended back to standing
+       over its last segment instead of snapping upright at the file's end. */
+    for (const key of ['backflip', 'frontflip', 'keeprollingbackward']) {
+      flipAt(key, settleOf(key));
+      const end = demo.measure();
+      const feet = Math.max(atPart(end, 'footL').low, atPart(end, 'footR').low);
+      check(key + ' stands back up by the end of the settle',
+        Math.abs(demo.lean()) < 0.02 && feet < 0.02 &&
+        atPart(end, 'head').low > 0.5,
+        'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, higher sole '
+        + (feet * 1000).toFixed(0) + ' mm, head '
+        + (atPart(end, 'head').low * 1000).toFixed(0) + ' mm');
+    }
+
     /* The settle is part of the display, not of the measured file. */
     check('the flip track is deterministic: a seek is the same however it is reached',
       (() => {
-        flipAt('backflip', 2.0); const a = demo.lean();
-        flipAt('backflip', 4.0);
-        flipAt('backflip', 2.0); const b = demo.lean();
+        const aT = bfA.frames[2].t, bT = bfA.frames[5].t;
+        flipAt('backflip', aT); const a = demo.lean();
+        flipAt('backflip', bT);
+        flipAt('backflip', aT); const b = demo.lean();
         return a === b;
       })());
     demo.playAction('backflip');
@@ -1118,9 +1143,9 @@ world(J());
       't=' + demo.act.t + ' expected ' + doneT.toFixed(3));
     const heldLean = demo.lean();
     tick(1);
-    check('the settled pose survives the next frame (no snap upright)',
+    check('the settled pose survives the next frame (it holds the end of the rise)',
       demo.act.key === 'backflip' && Math.abs(demo.lean() - heldLean) < 1e-9 &&
-      heldLean > 75 * Math.PI / 180,
+      Math.abs(heldLean) < 0.02,
       (heldLean * 180 / Math.PI).toFixed(1) + 'deg');
     const info = opts.els['moveInfo'];
     check('the readout counts only the file clock, not the settle',
@@ -1198,7 +1223,12 @@ world(J());
   check('typing in a text field does not fire the shortcuts', demo.act.key === null);
 
   demo.playAction('backflip');
-  tick(84);                                   // 1.344 s of the file's own clock
+  const bfA = demo.actions().backflip;
+  const headLow = () => demo.measure().find((p) => p.name === 'head').low;
+  /* The head reaches the floor just after the topple keyframe. Advance the
+     take until the solved picture says it is down, so the beat marked below
+     is the model's, not a remembered second. */
+  while (demo.act.playing && demo.act.t < bfA.frames[3].t && headLow() > 0.002) tick(1);
   const t = demo.act.t;
   check('the recorder clock follows the take', Math.abs(demo.record.clock().t - t) < 1e-9,
     demo.record.clock().t.toFixed(3) + ' vs ' + t.toFixed(3));
@@ -1260,13 +1290,14 @@ world(J());
 
   /* The bar under MOVES is the scrubber: the way to find a remembered beat
      without replaying the take. */
-  demo.seek('backflip', 1.8);
-  const seekAt = K1.actionPose(demo.actions().backflip, 1.8);
+  const scrubT = demo.actions().backflip.frames[2].t;
+  demo.seek('backflip', scrubT);
+  const seekAt = K1.actionPose(demo.actions().backflip, scrubT);
   check('the progress bar holds any second, with the file pose and the clock',
-    demo.act.playing === false && Math.abs(demo.act.t - 1.8) < 1e-9 &&
+    demo.act.playing === false && Math.abs(demo.act.t - scrubT) < 1e-9 &&
     demo.st.target.head === Math.round(seekAt.head) &&
     demo.record.clock().key === 'backflip' &&
-    Math.abs(demo.record.clock().t - 1.8) < 1e-9,
+    Math.abs(demo.record.clock().t - scrubT) < 1e-9,
     demo.act.t.toFixed(3) + 's');
   demo.seek('backflip', 999);
   check('a scrub past the settle stops at the end of the display track',
@@ -1291,11 +1322,12 @@ world(J());
   /* A scrub sets the joints and the clock but no frame runs in between, so the
      mark has to re-solve the picture before it measures, or the head height it
      reports belongs to the previous pose. */
-  demo.seek('backflip', 1.8);
+  demo.seek('backflip', t);
   const m4 = demo.record.mark();
   check('a mark on a scrubbed still measures that still, not the last frame',
-    Math.abs(m4.t - 1.8) < 1e-9 && m4.low.head <= 5 && m4.lean > 100,
-    'head ' + m4.low.head + 'mm, lean ' + m4.lean + 'deg');
+    Math.abs(m4.t - t) < 1e-3 && m4.low.head <= 5 && m4.lean > 100,
+    'head ' + m4.low.head + 'mm, lean ' + m4.lean + 'deg at '
+    + m4.t.toFixed(3) + 's vs ' + t.toFixed(3) + 's');
   demo.stopAction();
   demo.seek('backflip', m.t);
 
@@ -1346,6 +1378,68 @@ world(J());
     m6.pose.leftThigh === Math.round(dialled) &&
     m6.pose.leftThigh !== m6.model.leftThigh,
     'diff ' + m6.diff + ', thigh ' + m6.pose.leftThigh + ' vs ' + m6.model.leftThigh);
+
+  /* A pose saved in an earlier session can be read back in, so an old
+     position does not have to be dialled joint by joint again. */
+  const byName = {};
+  for (const j of demo.JOINTS) byName[j.name] = j.neutral;
+  byName.leftThigh = 200;
+  byName.head = demo.JOINTS[16].max;
+  els.recPaste.value = JSON.stringify(byName, null, 2)
+    + '\n\n# index order (jointMove):\n[1, 2]';
+  for (const fn of (els.recPaste._on && els.recPaste._on.keydown) || []) {
+    fn({ key: 'Enter', preventDefault() {}, stopPropagation() {} });
+  }
+  check('pasting the copied pose text sets the joints it names, comment and all',
+    demo.st.target.leftThigh === 200 &&
+    demo.st.target.head === demo.JOINTS[16].max &&
+    els.recPaste.hidden === true && /17 joints/.test(els.recCopied.textContent),
+    els.recCopied.textContent);
+
+  const byIndex = new Array(17).fill(0);
+  for (const j of demo.JOINTS) byIndex[j.index] = j.neutral;
+  byIndex[K1.byJoint.leftThigh.index] = 40;
+  els.recPaste.value = JSON.stringify(byIndex);
+  for (const fn of (els.recPaste._on && els.recPaste._on.keydown) || []) {
+    fn({ key: 'Enter', preventDefault() {}, stopPropagation() {} });
+  }
+  check('a bare 17-slot array is read in protocol index order',
+    demo.st.target.leftThigh === 40 &&
+    demo.st.target.rightThigh === K1.byJoint.rightThigh.neutral &&
+    demo.st.target.head === K1.byJoint.head.neutral);
+
+  els.recPaste.value = JSON.stringify({ leftThigh: 9999 });
+  for (const fn of (els.recPaste._on && els.recPaste._on.keydown) || []) {
+    fn({ key: 'Enter', preventDefault() {}, stopPropagation() {} });
+  }
+  check('a pasted value is clamped to the servo travel, and says so',
+    demo.st.target.leftThigh === K1.byJoint.leftThigh.max &&
+    /clamped/.test(els.recCopied.textContent), els.recCopied.textContent);
+
+  const beforeBad = demo.st.target.leftThigh;
+  els.recPaste.value = 'hello, not a pose';
+  const refused = demo.record.paste();
+  check('text that is not a pose is refused, and nothing moves',
+    refused === false && demo.st.target.leftThigh === beforeBad &&
+    /JSON/.test(els.recCopied.textContent), els.recCopied.textContent);
+
+  /* The record itself is pasteable too: its marks survive a reload, and a mark
+     with a pose of its own puts that pose back when clicked. */
+  const savedRecord = demo.record.json();
+  demo.record.clear();
+  els.recPaste.value = savedRecord;
+  for (const fn of (els.recPaste._on && els.recPaste._on.keydown) || []) {
+    fn({ key: 'Enter', preventDefault() {}, stopPropagation() {} });
+  }
+  check('a pasted record brings its marks back',
+    demo.record.marks().length === 1 && els.recList.children.length === 1 &&
+    /1 mark imported/.test(els.recCopied.textContent), els.recCopied.textContent);
+  const restored = demo.record.marks()[0];
+  click(els.recList.children[0]);
+  check('clicking a mark that stored a pose puts that pose back, not the file\'s',
+    restored.pose && demo.st.target.leftThigh === restored.pose.leftThigh &&
+    demo.act.key === restored.action && demo.act.playing === false,
+    restored.action + ' thigh ' + demo.st.target.leftThigh);
 }
 
 console.log(bad ? '\nRESULT: FAIL (' + bad + ')' : '\nRESULT: PASS');

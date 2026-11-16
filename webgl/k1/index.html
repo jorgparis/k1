@@ -37,9 +37,13 @@
       <div class="recLine">
         <button id="recMark" class="real">mark</button>
         <button id="recRecall">recall</button>
+        <button id="recPasteBtn" title="paste a pose or a record (Enter applies)">paste</button>
         <button id="recClear">clear</button>
         <button id="recCopy">copy</button>
       </div>
+      <textarea id="recPaste" rows="3" spellcheck="false" hidden
+                placeholder="paste a pose or a k1-record, Enter applies"></textarea>
+      <span id="recCopied"></span>
       <div id="recList"></div>
     </details>
     <div id="rows"></div>

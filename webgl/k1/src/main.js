@@ -765,6 +765,148 @@
       : 'nothing dialled by hand yet (U)';
   }
 
+  /* --------------------------------------------------------- pasting a pose */
+  /* The page can copy a pose; this is the other way. A pose saved from an
+     earlier session - the `copy pose` block, the 17-slot index array, or a
+     whole k1-record/1 - can be pasted instead of dialling seventeen sliders
+     again. Nothing here is fetched: the text comes from the clipboard through
+     the box, and a record's marks come back with it. */
+  function firstJSON(text) {
+    const start = text.search(/[{\[]/);
+    if (start < 0) return null;
+    const open = text[start], close = open === '{' ? '}' : ']';
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < text.length; i++) {
+      const c = text[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === '\\') esc = true;
+        else if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') { inStr = true; continue; }
+      if (c === open) depth++;
+      else if (c === close && --depth === 0) return text.slice(start, i + 1);
+    }
+    return null;
+  }
+
+  function parsePaste(text) {
+    const raw = String(text == null ? '' : text).trim();
+    if (!raw) return { error: 'nothing pasted' };
+    /* `copy pose` writes two blocks with a comment between them; the comment
+       lines are dropped and the first JSON value is what gets read. */
+    const clean = raw.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n').trim();
+    const body = firstJSON(clean);
+    if (!body) return { error: 'no JSON in that text' };
+    let data = null;
+    try { data = JSON.parse(body); } catch (e) { return { error: 'that JSON does not parse' }; }
+    if (!data || typeof data !== 'object') return { error: 'not a pose or a record' };
+
+    if (data.format === 'k1-record/1' && Array.isArray(data.marks)) return { record: data };
+
+    if (Array.isArray(data)) {
+      const byIdx = JOINTS.slice().sort((a, b) => a.index - b.index);
+      if (data.length !== byIdx.length) {
+        return { error: 'expected ' + byIdx.length + ' numbers, got ' + data.length };
+      }
+      const pose = {}, off = [];
+      for (let i = 0; i < byIdx.length; i++) {
+        const j = byIdx[i], v = +data[i];
+        if (!isFinite(v)) return { error: j.name + ' is not a number' };
+        pose[j.name] = K1.clampRaw(j.name, v);
+        if (pose[j.name] !== v) off.push(j.name);
+      }
+      return { pose, off, count: byIdx.length };
+    }
+
+    const pose = {}, off = [], bad = [];
+    for (const j of JOINTS) {
+      if (data[j.name] == null) continue;
+      const v = +data[j.name];
+      if (!isFinite(v)) { bad.push(j.name); continue; }
+      pose[j.name] = K1.clampRaw(j.name, v);
+      if (pose[j.name] !== v) off.push(j.name);
+    }
+    if (bad.length) return { error: 'not a number: ' + bad.join(', ') };
+    const count = Object.keys(pose).length;
+    if (!count) return { error: 'no joint names in that JSON' };
+    return { pose, off, count };
+  }
+
+  /* A pasted pose is the same kind of thing as a dialled one: it becomes the
+     current target, a still, and the pose `U` will bring back. A partial pose
+     keeps the joints it does not name. */
+  function applyPastedPose(pose) {
+    freezeAction();
+    const p = {};
+    for (const j of JOINTS) {
+      p[j.name] = pose[j.name] != null ? K1.clampRaw(j.name, pose[j.name]) : st.target[j.name];
+    }
+    st.target = p;
+    st.joints = p;
+    st.scene = 'PASTED POSE';
+    saveHold();
+    syncPanel();
+    syncMoveInfo();
+  }
+
+  function importRecord(data) {
+    const clean = [];
+    for (const m of data.marks) {
+      if (!m || typeof m !== 'object') continue;
+      clean.push({
+        n: clean.length + 1,
+        action: typeof m.action === 'string' ? m.action : null,
+        name: typeof m.name === 'string' ? m.name : null,
+        t: isFinite(+m.t) ? +m.t : 0,
+        note: typeof m.note === 'string' ? m.note : '',
+        diff: isFinite(+m.diff) ? +m.diff : 0,
+        lean: isFinite(+m.lean) ? +m.lean : 0,
+        low: m.low && typeof m.low === 'object' ? m.low : {},
+        pelvis: Array.isArray(m.pelvis) ? m.pelvis.slice(0, 3) : [0, 0, 0],
+        model: m.model && typeof m.model === 'object' ? m.model : null,
+        pose: m.pose && typeof m.pose === 'object' ? m.pose : null
+      });
+    }
+    rec.marks.length = 0;
+    for (const m of clean) rec.marks.push(m);
+    const last = rec.marks[rec.marks.length - 1];
+    const key = last ? last.action : (typeof data.action === 'string' ? data.action : null);
+    const ok = key && actions()[key];
+    rec.at = { key: ok ? key : null, t: ok ? (last ? last.t : 0) : 0 };
+    recRender();
+    syncRecAt();
+    syncMoveInfo();
+    return rec.marks.length;
+  }
+
+  function recApplyPaste() {
+    const el = document.getElementById('recPaste');
+    if (!el) return false;
+    const r = parsePaste(el.value);
+    const say = (t) => {
+      const m = document.getElementById('recCopied');
+      if (!m) return;
+      m.textContent = t;
+      setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 2600);
+    };
+    if (r.error) { say(r.error); return false; }
+    if (r.record) {
+      const n = importRecord(r.record);
+      el.value = '';
+      el.hidden = true;
+      say(n + (n === 1 ? ' mark' : ' marks') + ' imported');
+      return true;
+    }
+    applyPastedPose(r.pose);
+    el.value = '';
+    el.hidden = true;
+    const n = r.count != null ? r.count : Object.keys(r.pose).length;
+    say(n + (n === 1 ? ' joint' : ' joints') + (r.off.length ? ' (clamped ' + r.off.length + ')' : ''));
+    return true;
+  }
+
   /* The bar under the move list is also the scrubber: an action can be held at
      any second without playing it, which is how a beat remembered from the real
      robot is found again. A flip's settle is on the same clock (FLIP_SETTLE),
@@ -794,6 +936,21 @@
     if (!m || !m.action) return false;
     if (!seekAction(m.action, m.t)) return false;
     act.playing = false;                // a still, not a take
+    /* A mark that stored a pose was a hand-made observation: clicking it must
+       put that pose back, or the very thing the note describes is thrown away
+       and replaced by the file's. */
+    if (m.pose) {
+      const file = K1.actionPose(actions()[m.action], act.t);
+      const p = {};
+      for (const j of JOINTS) {
+        const v = m.pose[j.name];
+        p[j.name] = K1.clampRaw(j.name, v != null ? v : file[j.name]);
+      }
+      st.target = p;
+      st.joints = p;
+      saveHold();
+    }
+    syncPanel();
     syncMoveInfo();
     return true;
   }
@@ -845,8 +1002,33 @@
     const copy = document.getElementById('recCopy');
     const note = document.getElementById('recNote');
     const recall = document.getElementById('recRecall');
+    const pasteBtn = document.getElementById('recPasteBtn');
+    const paste = document.getElementById('recPaste');
     if (mark) mark.addEventListener('click', () => recMark());
     if (recall) recall.addEventListener('click', () => recRecall());
+    if (pasteBtn && paste) {
+      pasteBtn.addEventListener('click', () => {
+        /* First press opens the box; with something in it, the same press
+           applies it, so the mouse path never needs the keyboard. */
+        if (paste.hidden || !String(paste.value).trim()) {
+          paste.hidden = false;
+          paste.focus();
+          return;
+        }
+        recApplyPaste();
+      });
+      paste.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          recApplyPaste();
+          if (e.preventDefault) e.preventDefault();
+          if (e.stopPropagation) e.stopPropagation();
+        } else if (e.key === 'Escape') {
+          paste.value = '';
+          paste.hidden = true;
+          if (e.stopPropagation) e.stopPropagation();
+        }
+      });
+    }
     if (clear) clear.addEventListener('click', () => recClear());
     if (copy) copy.addEventListener('click', () => recCopy());
     if (note) {
@@ -1353,6 +1535,23 @@
     let Cx = 0, Cy = D.hipH + first.cbar[1];
     let Vx = 0, Vy = 0, L = 0, th = 0;
 
+    /* The file's last keyframe is the neutral standing pose - every servo back
+       at neutral. On the robot that last segment is the stand-up (the owner
+       sees Back Flip end on its feet), but a free rigid body cannot do it: its
+       final pose is still a lying shape and gravity holds it down. So over
+       exactly that segment the solved root is blended back to the neutral
+       standing root, and the settle holds it. The blend reads the file only:
+       it starts where the last non-neutral keyframe arrives and finishes where
+       the file does. No servo value is changed. */
+    const isNeutral = (fr) => JOINTS.every((j) => !(fr.mag && fr.mag[j.name]));
+    let riseFrom = -1;
+    if (action.frames.length && isNeutral(action.frames[action.frames.length - 1])) {
+      for (let i = action.frames.length - 2; i >= 0; i--) {
+        if (!isNeutral(action.frames[i])) { riseFrom = action.frames[i].t; break; }
+      }
+      if (riseFrom < 0) riseFrom = Math.max(0, dur - 0.6);
+    }
+
     for (let s = 0; s < n; s++) {
       const t = Math.min(simDur, s * dt);
       const iv = flipInterior(action, Math.max(1e-4, t), dt);
@@ -1418,6 +1617,31 @@
       if (rest < 0) ppy -= rest;
 
       pitch[s] = th; px[s] = ppx; py[s] = ppy;
+
+      /* The rise: hand the root back to the standing solution over the last
+         segment. Pitch and travel blend to the neutral root; the pelvis height
+         is then solved so the lowest part the flip solve put on the floor
+         still rests on it, which ends at `hipH` exactly because the final pose
+         is neutral. That keeps the stand-up in contact instead of levitating
+         between a lying root and an upright one. */
+      if (riseFrom >= 0 && t > riseFrom) {
+        let u = 1;
+        if (t < dur) {
+          const x = (t - riseFrom) / (dur - riseFrom);
+          u = x * x * (3 - 2 * x);        // smoothstep, so the rise has no kink
+        }
+        const thb = th * (1 - u);
+        const cb = Math.cos(thb), sb = Math.sin(thb);
+        let lowRel = Infinity;
+        for (const hb of mid.hulls) {
+          for (const cp of hb.pts) {
+            lowRel = Math.min(lowRel, cp[0] * sb + cp[1] * cb);
+          }
+        }
+        pitch[s] = thb;
+        px[s] = ppx * (1 - u);
+        py[s] = -lowRel;
+      }
     }
 
     st.yaw = yaw;
@@ -1998,7 +2222,10 @@
       json: recJSON,
       /* The last pose dialled by hand, and the way back to it. */
       recall: recRecall,
-      hold: () => (hold.pose ? { key: hold.key, t: hold.t } : null)
+      hold: () => (hold.pose ? { key: hold.key, t: hold.t } : null),
+      /* Reading a copied pose or a whole record back in. */
+      paste: recApplyPaste,
+      parse: parsePaste
     },
   };
 
