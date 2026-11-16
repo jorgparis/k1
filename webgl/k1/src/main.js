@@ -1243,6 +1243,17 @@
     return soleRef;
   }
 
+  /* Whether the servos on screen are still the file's pose at the current
+     second. A slider, nudge, preset or paste makes them differ, and on a flip
+     that difference changes how far the legs actually reach. */
+  function dialledPose(action) {
+    const want = K1.actionPose(action, act.t);
+    for (const j of JOINTS) {
+      if (Math.abs(st.joints[j.name] - want[j.name]) > 0.01) return true;
+    }
+    return false;
+  }
+
   /* A K1 has no waist servo: pelvis and torso are one rigid piece, and the legs
      are the only thing between the floor and the body. So the honest picture is
      not "pelvis fixed, legs swing" but "support foot fixed, body moves": the
@@ -1300,7 +1311,18 @@
        pose the file plays. */
     if (act.data && act.data.flip) {
       const s = flipSample(flipTrack(act.data), act.t);
-      return { pitch: s.pitch, tx: s.px, tz: 0, ty: s.py - D.hipH };
+      let ty = s.py - D.hipH;
+      /* A joint moved by hand is no longer the pose the track was solved from:
+         the legs can reach further or shorter than the file's at this second,
+         so the solved pelvis height leaves a dialled pose hanging above the
+         floor (or pressed into it). Keep the track's lean and where it stands,
+         but re-seat the height on the lowest flip-body part. The file's own
+         pose is untouched - its track must still leave the floor mid-roll. */
+      if (dialledPose(act.data)) {
+        composeWorld(ty, s.pitch, s.tx, s.tz);
+        ty -= lowestFlipBody();
+      }
+      return { pitch: s.pitch, tx: s.px, tz: 0, ty };
     }
     const ref = supportRef();
     composeWorld(0, 0, 0);

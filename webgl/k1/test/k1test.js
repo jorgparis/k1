@@ -1124,6 +1124,27 @@ world(J());
         + (atPart(end, 'head').low * 1000).toFixed(0) + ' mm');
     }
 
+    /* A hand-dialled pose during a flip is no longer the shape the free track
+       was solved from: the legs can reach further or shorter than the file's
+       at that second. The track's lean and place must survive, but the height
+       has to follow the pose on screen - otherwise a shortened leg leaves the
+       whole robot hanging in the air (a mark taken this way showed the feet
+       75 mm up). */
+    flipAt('backflip', 1.161);
+    const fileLow = Math.min(...demo.measure().map((p) => p.low));
+    demo.st.target.leftCalf = K1.clampRaw('leftCalf', demo.st.target.leftCalf + 60);
+    demo.st.target.rightCalf = K1.clampRaw('rightCalf', demo.st.target.rightCalf + 60);
+    demo.st.joints = Object.assign({}, demo.st.target);
+    tick(1);
+    const dialM = demo.measure();
+    const dialLow = Math.min(...dialM
+      .filter((p) => body.indexOf(p.name) >= 0)
+      .map((p) => p.low));
+    check('a leg dialled during a frozen flip is re-seated on the floor, not left hanging',
+      fileLow < 0.01 && Math.abs(dialLow) < 0.003,
+      'file ' + (fileLow * 1000).toFixed(0) + ' mm, dialled '
+      + (dialLow * 1000).toFixed(0) + ' mm');
+
     /* The settle is part of the display, not of the measured file. */
     check('the flip track is deterministic: a seek is the same however it is reached',
       (() => {
