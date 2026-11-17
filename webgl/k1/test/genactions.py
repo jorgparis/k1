@@ -132,6 +132,33 @@ LEG_GAIN_MOVES = {
     },
 }
 
+# The owner's 3.461 s mark records a dialled Back Flip pose. Its page clock is
+# approximate: the `model` block is the file's 2.958 s pose. File that
+# observation as a display hint so scrubbing or deep-linking to 3.461 s shows
+# the marked pose and lean without needing the record pasted first. No servo
+# byte changes; this only overrides what a still at that second displays.
+MARK_POSE_MOVES = {
+    "backflip": {
+        "t": 3.461,
+        "pose": {
+            "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,
+            "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109,
+            "leftShoulder": 102, "rightShoulder": 146,
+            "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
+            "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204,
+            "head": 122,
+        },
+        "model": {
+            "leftThigh": 116, "leftCalf": 65, "leftAnkle": 112,
+            "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140,
+            "leftShoulder": 102, "rightShoulder": 146,
+            "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
+            "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126,
+            "head": 122,
+        },
+    },
+}
+
 # Back Flip's arms are position-controlled print and are left out of the free
 # rigid-body solve. As the body rolls onto its back after the head-and-palms
 # triangle, the file's fixed arm angle drags the hands under the floor: at the
@@ -340,6 +367,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["legGain"] = LEG_GAIN_MOVES[key]
             if key in ARM_CLEAR_MOVES:
                 entry["armClear"] = ARM_CLEAR_MOVES[key]
+            if key in MARK_POSE_MOVES:
+                entry["markPose"] = MARK_POSE_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:

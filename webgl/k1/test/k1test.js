@@ -1283,6 +1283,24 @@ world(J());
       'worst ' + dWorst.toFixed(0) + ' mm at ' + dWorstT.toFixed(2)
       + 's, joints ' + (dExact ? 'exact' : 'changed'));
 
+    /* The generated mark hint puts the owner's dialled values on that second
+       itself, so scrubbing or deep-linking to 3.461 s shows them without
+       opening the mark. Neighbouring seconds still show the file. */
+    demo.seek('backflip', 3.461);
+    tick(1);
+    const scrubM = demo.measure();
+    check("scrubbing to 3.461 shows the mark's values without opening the mark",
+      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
+      Math.min(atPart(scrubM, 'handL').low, atPart(scrubM, 'handR').low) > -0.005,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, joints '
+      + (jointsExact() ? 'exact' : 'changed'));
+    demo.seek('backflip', 3.3);
+    tick(1);
+    check('the mark override is scoped to its second, not the whole roll',
+      demo.st.joints.leftArm !== 33 && Math.abs(demo.lean() * 180 / Math.PI - 141.1) > 5,
+      'leftArm ' + demo.st.joints.leftArm + ', lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');
+
     /* The owner's actual record: its page clock says 3.461 s but its `model`
        block is the file's 2.958 s pose (the clock is approximate). Seeking the
        mark used to re-solve the root from 3.461 s and show 79deg, nowhere near

@@ -882,6 +882,7 @@
     recRender();
     syncRecAt();
     syncMoveInfo();
+    applyMarkAt(key, rec.at.t);
     return rec.marks.length;
   }
 
@@ -929,6 +930,7 @@
     const p = K1.actionPose(a, act.t);
     st.target = p;
     st.joints = p;
+    applyMarkAt(key, act.t);
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
     syncMoveInfo();
@@ -953,6 +955,29 @@
       if (d < bestD) { bestD = d; bestT = Math.min(t, dur); }
     }
     return bestT;
+  }
+
+  /* The page second is how the owner filed an observation. Scrubbing or
+     deep-linking to it must show the marked pose and root, not whatever file
+     frame the current decoder happens to place there. A hint generated from
+     the owner's mark makes this work even before a record is pasted. */
+  function markedPoseAt(key, t) {
+    const hint = (actions()[key] || {}).markPose;
+    return hint && Math.abs(hint.t - t) <= 1e-3 ? hint : null;
+  }
+  function applyMarkAt(key, t) {
+    const m = markedPoseAt(key, t);
+    if (!m || !act.data) return false;
+    const file = K1.actionPose(act.data, act.t);
+    const p = {};
+    for (const j of JOINTS) {
+      const v = m.pose[j.name];
+      p[j.name] = K1.clampRaw(j.name, v != null ? v : file[j.name]);
+    }
+    st.target = p;
+    st.joints = p;
+    act.rootT = act.data.flip && m.model ? modelTime(act.data, m.model) : null;
+    return true;
   }
 
   function recSeek(m) {
@@ -2334,6 +2359,7 @@
       const p = K1.actionPose(act.data, act.t);
       st.target = p;
       st.joints = p;
+      applyMarkAt(act.key, act.t);
       act.playing = false;                // a still, not a take
       /* A mark made while looking at a deep-linked still belongs to that
          second, not to zero. */

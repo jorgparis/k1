@@ -2453,6 +2453,7 @@ window.K1ACTIONS = {
   "tripodUntil": 2.95,
   "legGain": {"from": 0, "full": 1.852, "keys": [{"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}}]},
   "armClear": {"keys": [{"t": 2.95, "v": 0}, {"t": 2.98, "v": -26}, {"t": 3.039, "v": -43}, {"t": 3.1, "v": -51}, {"t": 3.3, "v": -54}, {"t": 3.5, "v": -46}, {"t": 3.7, "v": -40}, {"t": 3.8, "v": -34}, {"t": 3.9, "v": -22}, {"t": 4.0, "v": 0}]},
+  "markPose": {"t": 3.461, "pose": {"leftThigh": 229, "leftCalf": 10, "leftAnkle": 143, "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204, "head": 122}, "model": {"leftThigh": 116, "leftCalf": 65, "leftAnkle": 112, "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126, "head": 122}},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -5940,6 +5941,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     recRender();
     syncRecAt();
     syncMoveInfo();
+    applyMarkAt(key, rec.at.t);
     return rec.marks.length;
   }
 
@@ -5987,6 +5989,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     const p = K1.actionPose(a, act.t);
     st.target = p;
     st.joints = p;
+    applyMarkAt(key, act.t);
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
     syncMoveInfo();
@@ -6011,6 +6014,29 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       if (d < bestD) { bestD = d; bestT = Math.min(t, dur); }
     }
     return bestT;
+  }
+
+  /* The page second is how the owner filed an observation. Scrubbing or
+     deep-linking to it must show the marked pose and root, not whatever file
+     frame the current decoder happens to place there. A hint generated from
+     the owner's mark makes this work even before a record is pasted. */
+  function markedPoseAt(key, t) {
+    const hint = (actions()[key] || {}).markPose;
+    return hint && Math.abs(hint.t - t) <= 1e-3 ? hint : null;
+  }
+  function applyMarkAt(key, t) {
+    const m = markedPoseAt(key, t);
+    if (!m || !act.data) return false;
+    const file = K1.actionPose(act.data, act.t);
+    const p = {};
+    for (const j of JOINTS) {
+      const v = m.pose[j.name];
+      p[j.name] = K1.clampRaw(j.name, v != null ? v : file[j.name]);
+    }
+    st.target = p;
+    st.joints = p;
+    act.rootT = act.data.flip && m.model ? modelTime(act.data, m.model) : null;
+    return true;
   }
 
   function recSeek(m) {
@@ -7392,6 +7418,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       const p = K1.actionPose(act.data, act.t);
       st.target = p;
       st.joints = p;
+      applyMarkAt(act.key, act.t);
       act.playing = false;                // a still, not a take
       /* A mark made while looking at a deep-linked still belongs to that
          second, not to zero. */
