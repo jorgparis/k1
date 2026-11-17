@@ -968,14 +968,19 @@
      frame the current decoder happens to place there. A hint generated from
      the owner's mark makes this work even before a record is pasted. */
   function markedPoseAt(key, t) {
-    const hint = (actions()[key] || {}).markPose;
-    if (!hint) return null;
-    /* The page clock is approximate: the same beat has been marked at 3.404
-       and 3.461. Cover the whole band so the dialled pose shows wherever the
-       owner's clock reads when they mark it, not just at one exact second. */
-    const from = hint.from != null ? hint.from : hint.t;
-    const to = hint.to != null ? hint.to : hint.t;
-    return t + 1e-9 >= from && t - 1e-9 <= to ? hint : null;
+    const raw = (actions()[key] || {}).markPose;
+    if (!raw) return null;
+    /* The page clock is approximate: a beat has been marked at 3.404 and
+       3.461, and a later one at 3.682. Each hint covers its own band so the
+       dialled pose shows wherever the owner's clock read, not just at one
+       exact second. */
+    const hints = Array.isArray(raw) ? raw : [raw];
+    for (const hint of hints) {
+      const from = hint.from != null ? hint.from : hint.t;
+      const to = hint.to != null ? hint.to : hint.t;
+      if (t + 1e-9 >= from && t - 1e-9 <= to) return hint;
+    }
+    return null;
   }
   function applyMarkAt(key, t) {
     const m = markedPoseAt(key, t);

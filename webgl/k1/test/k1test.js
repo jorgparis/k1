@@ -1322,6 +1322,39 @@ world(J());
       'leftArm ' + demo.st.joints.leftArm + ', lean '
       + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');
 
+    /* The owner's later mark is the same beat rolling on towards the feet.
+       Its `model` block is the file's 3.483 s pose, and its dialled shoulders
+       and ankles tilt the level triangle to ~208 deg with the feet 74 mm up. */
+    const dialled2 = {
+      leftThigh: 229, leftCalf: 10, leftAnkle: 133,
+      rightThigh: 18, rightCalf: 240, rightAnkle: 118,
+      leftShoulder: 135, rightShoulder: 110,
+      leftHip: 123, leftFoot: 125, rightHip: 129, rightFoot: 115,
+      leftArm: 33, leftHand: 37, rightArm: 224, rightHand: 204, head: 122
+    };
+    const exact2 = () => Object.keys(dialled2)
+      .every((k) => demo.st.joints[k] === dialled2[k]);
+    demo.seek('backflip', 3.682);
+    tick(1);
+    const m3 = demo.measure(), p3 = (n) => atPart(m3, n);
+    check("scrubbing to 3.682 shows the owner's later pose on its triangle",
+      exact2() && Math.abs(demo.lean() * 180 / Math.PI - 208) < 1 &&
+      Math.abs(demo.act.rootT - 3.483) < 0.05 &&
+      Math.abs(p3('head').low) < 0.01 &&
+      Math.abs(p3('handL').low - 0.008) < 0.01 &&
+      Math.abs(p3('handR').low) < 0.01 &&
+      Math.abs(p3('footL').low - 0.074) < 0.01 &&
+      Math.abs(p3('pelvis').low - 0.333) < 0.01 &&
+      Math.abs(p3('torso').low - 0.066) < 0.01,
+      'root file time ' + demo.act.rootT.toFixed(3) + 's, lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (p3('head').low * 1000).toFixed(0) + ' mm, hands '
+      + (p3('handL').low * 1000).toFixed(0) + '/'
+      + (p3('handR').low * 1000).toFixed(0) + ' mm, feet '
+      + (p3('footL').low * 1000).toFixed(0) + '/'
+      + (p3('footR').low * 1000).toFixed(0) + ' mm, joints '
+      + (exact2() ? 'exact' : 'changed'));
+
     /* The owner's actual record: its page clock says 3.461 s but its `model`
        block is the file's 2.958 s pose (the clock is approximate). Seeking the
        mark used to re-solve the root from 3.461 s and show 79deg, nowhere near
@@ -1833,6 +1866,24 @@ world(J());
       exact(demo) && sl.length === 17 &&
       demo.JOINTS.every((j, i) => sl[i] === dialled[j.name]),
       'joints ' + (exact(demo) ? 'exact' : 'changed') + ', sliders ' + sl.join(','));
+
+    /* The later mark is filed separately, so a link to 3.682 must show its
+       own dialled shoulders and ankles, not the earlier beat's pose. */
+    vm.runInContext("location.hash = '#run/backflip/3.682'", opts.ctx);
+    for (const fn of opts.listeners['window:hashchange'] || []) fn({});
+    frames(opts, 2);
+    const m2 = demo.measure(), g2 = (n) => m2.find((p) => p.name === n);
+    check('the later mark navigates by deep link on its own triangle',
+      Math.abs(demo.act.rootT - 3.483) < 0.05 &&
+      Math.abs(demo.lean() * 180 / Math.PI - 208) < 1 &&
+      Math.abs(g2('head').low) < 0.01 &&
+      Math.abs(g2('handL').low - 0.008) < 0.01 &&
+      Math.abs(g2('footL').low - 0.074) < 0.01 &&
+      demo.st.joints.leftShoulder === 135 && demo.st.joints.leftAnkle === 133,
+      'root file time ' + demo.act.rootT.toFixed(3) + 's, lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (g2('head').low * 1000).toFixed(0) + ' mm, foot '
+      + (g2('footL').low * 1000).toFixed(0) + ' mm');
   }
 
   /* Same tab, hash changed after an ordinary boot. */

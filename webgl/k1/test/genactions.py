@@ -132,37 +132,62 @@ LEG_GAIN_MOVES = {
     },
 }
 
-# The owner's 3.461 s mark records a dialled Back Flip pose. Its page clock is
-# approximate: the `model` block is the file's 2.958 s pose. File that
-# observation as a display hint so scrubbing or deep-linking to 3.461 s shows
-# the marked pose, lean and head plant without needing the record pasted first.
-# No servo byte changes; this only overrides what a still at that second shows.
+# The owner's Back Flip marks record dialled poses alongside the file pose
+# they were matched against. Their page clocks are approximate: the first
+# mark's `model` block is the file's 2.958 s pose, the second's is 3.483 s.
+# File each observation as a display hint so scrubbing or deep-linking to its
+# band shows the marked pose and head-and-palms triangle without needing the
+# record pasted first. No servo byte changes; these only override stills.
 MARK_POSE_MOVES = {
-    "backflip": {
-        "t": 3.461,
-        "from": 3.35,
-        "to": 3.55,
-        # The owner's record wants the head and both palms on the floor
-        # together. Solve the root pitch that levels all three contacts for
-        # these exact dialled joints, with no hand passing under the floor.
-        "seat": "head",
-        "pose": {
-            "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,
-            "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109,
-            "leftShoulder": 102, "rightShoulder": 146,
-            "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
-            "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204,
-            "head": 122,
+    "backflip": [
+        {
+            "t": 3.461,
+            "from": 3.35,
+            "to": 3.55,
+            "seat": "head",
+            "pose": {
+                "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,
+                "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109,
+                "leftShoulder": 102, "rightShoulder": 146,
+                "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
+                "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204,
+                "head": 122,
+            },
+            "model": {
+                "leftThigh": 116, "leftCalf": 65, "leftAnkle": 112,
+                "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140,
+                "leftShoulder": 102, "rightShoulder": 146,
+                "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
+                "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126,
+                "head": 122,
+            },
         },
-        "model": {
-            "leftThigh": 116, "leftCalf": 65, "leftAnkle": 112,
-            "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140,
-            "leftShoulder": 102, "rightShoulder": 146,
-            "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
-            "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126,
-            "head": 122,
+        {
+            # The same beat a little later: the body has rolled past the head
+            # towards the feet, still on the head-and-palms triangle. Its
+            # level pitch is ~208 deg, with the feet 74 mm off the floor.
+            "t": 3.682,
+            "from": 3.60,
+            "to": 3.78,
+            "seat": "head",
+            "pose": {
+                "leftThigh": 229, "leftCalf": 10, "leftAnkle": 133,
+                "rightThigh": 18, "rightCalf": 240, "rightAnkle": 118,
+                "leftShoulder": 135, "rightShoulder": 110,
+                "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115,
+                "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204,
+                "head": 122,
+            },
+            "model": {
+                "leftThigh": 229, "leftCalf": 106, "leftAnkle": 108,
+                "rightThigh": 18, "rightCalf": 143, "rightAnkle": 145,
+                "leftShoulder": 103, "rightShoulder": 145,
+                "leftHip": 123, "leftFoot": 123, "rightHip": 129, "rightFoot": 114,
+                "leftArm": 95, "leftHand": 89, "rightArm": 163, "rightHand": 152,
+                "head": 122,
+            },
         },
-    },
+    ],
 }
 
 # Back Flip's arms are position-controlled print and are left out of the free
