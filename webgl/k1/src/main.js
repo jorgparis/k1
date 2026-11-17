@@ -883,6 +883,7 @@
     syncRecAt();
     syncMoveInfo();
     applyMarkAt(key, rec.at.t);
+    syncPanel();
     return rec.marks.length;
   }
 
@@ -2360,6 +2361,7 @@
       st.target = p;
       st.joints = p;
       applyMarkAt(act.key, act.t);
+      syncPanel();                        // the sliders must show the still too
       act.playing = false;                // a still, not a take
       /* A mark made while looking at a deep-linked still belongs to that
          second, not to zero. */
@@ -2387,6 +2389,9 @@
   window.addEventListener('keydown', (e) => { if (!started) begin(); });
   /* #run starts without a click: useful for a bookmark, a kiosk, or a
      headless screenshot. Sound still waits for whatever the browser allows. */
+  /* Changing just the hash in an already open tab is also navigation: run the
+     same deep-link seek instead of leaving the old pose on screen. */
+  window.addEventListener('hashchange', () => { if (started) hashAction(); });
   if ((window.location.hash || '').indexOf('#run') === 0) begin();
 
   updateHint();

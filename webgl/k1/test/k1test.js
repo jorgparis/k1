@@ -1762,5 +1762,74 @@ world(J());
     restored.action + ' thigh ' + demo.st.target.leftThigh);
 }
 
+/* -------------------------------------------------------- 8. deep links */
+/* A bookmark like #run/backflip/3.461 must show the owner's mark on a fresh
+   load, and the 17 servo sliders must agree with the model. The mark is a
+   generated hint in actions.js, so no record needs pasting. Changing just the
+   hash in an already-open tab takes the same path via the hashchange listener. */
+{
+  const dialled = {
+    leftThigh: 229, leftCalf: 10, leftAnkle: 143,
+    rightThigh: 18, rightCalf: 240, rightAnkle: 109,
+    leftShoulder: 102, rightShoulder: 146,
+    leftHip: 123, leftFoot: 125, rightHip: 129, rightFoot: 115,
+    leftArm: 33, leftHand: 37, rightArm: 224, rightHand: 204, head: 122
+  };
+  const FILES = ['math.js', 'geo.js', 'gl.js', 'shaders.js', 'k1.js', 'actions.js', 'hud.js', 'music.js', 'main.js'];
+  const frames = (opts, n) => { for (let i = 0; i < n; i++) { const q = opts.raf; opts.raf = []; for (const f of q) f(1000 + i * 16); } };
+  const sliders = (els) => (els['rows'].children || []).map((r) => {
+    const sl = r.children.find((c) => c.type === 'range');
+    return sl ? +sl.value : NaN;
+  });
+  const exact = (demo) => Object.keys(dialled).every((k) => demo.st.target[k] === dialled[k]);
+
+  /* Fresh load with the mark's second already in the URL: the hash itself
+     starts the demo, so no intro click is needed. */
+  {
+    const opts = { audio: 'normal' };
+    makeSandbox(opts);
+    vm.runInContext("location.hash = '#run/backflip/3.461'", opts.ctx);
+    for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), opts.ctx, { filename: f });
+    frames(opts, 3);
+    const win = vm.runInContext('window', opts.ctx), demo = win.K1DEMO;
+    const m = demo.measure(), g = (n) => m.find((p) => p.name === n);
+    const sl = sliders(opts.els);
+    check('a fresh #run/backflip/3.461 link boots straight into the marked still',
+      win.__K1_BOOTED === true && Math.abs(demo.act.t - 3.461) < 1e-9 &&
+      demo.act.playing === false && demo.act.rootT != null &&
+      Math.abs(demo.act.rootT - 2.958) < 0.05,
+      'booted=' + win.__K1_BOOTED + ' t=' + demo.act.t + ' rootT=' + demo.act.rootT);
+    check('the fresh deep link shows the recorded lean with hands on the floor',
+      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
+      Math.abs(g('handL').low) < 0.01 && Math.abs(g('handR').low) < 0.01,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, hands '
+      + (g('handL').low * 1000).toFixed(0) + '/' + (g('handR').low * 1000).toFixed(0) + ' mm');
+    check('the fresh deep link sets every dialled joint on the model and the panel',
+      exact(demo) && sl.length === 17 &&
+      demo.JOINTS.every((j, i) => sl[i] === dialled[j.name]),
+      'joints ' + (exact(demo) ? 'exact' : 'changed') + ', sliders ' + sl.join(','));
+  }
+
+  /* Same tab, hash changed after an ordinary boot. */
+  {
+    const opts = { audio: 'normal' };
+    makeSandbox(opts);
+    for (const f of FILES) vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), opts.ctx, { filename: f });
+    for (const fn of opts.listeners['intro:click'] || []) fn({});
+    frames(opts, 3);
+    const win = vm.runInContext('window', opts.ctx), demo = win.K1DEMO;
+    check('before navigation an open tab is not showing the marked pose', exact(demo) === false);
+    vm.runInContext("location.hash = '#run/backflip/3.461'", opts.ctx);
+    for (const fn of opts.listeners['window:hashchange'] || []) fn({});
+    frames(opts, 2);
+    const sl = sliders(opts.els);
+    check('changing the hash in an open tab moves the model and the sliders',
+      exact(demo) && Math.abs(demo.act.t - 3.461) < 1e-9 &&
+      demo.JOINTS.every((j, i) => sl[i] === dialled[j.name]),
+      't=' + demo.act.t + ', joints ' + (exact(demo) ? 'exact' : 'changed')
+      + ', sliders ' + sl.join(','));
+  }
+}
+
 console.log(bad ? '\nRESULT: FAIL (' + bad + ')' : '\nRESULT: PASS');
 process.exit(bad ? 1 : 0);
