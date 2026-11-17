@@ -1324,7 +1324,12 @@
          Keep the track's horizontal place and re-solve the lean from the
          dialled leg chain. The file's own pose keeps the free track, so it can
          still leave the floor mid-roll. */
-      if (legsDialled(act.data)) {
+      /* A per-move leg remap is also a change of shape: Back Flip's wind-up
+         pose leans the way its own legs now say, up to the owner's 1.852 s
+         mark. The free track still supplies the place and the later roll. */
+      const lg = act.data.legGain;
+      if (legsDialled(act.data) ||
+          (lg && act.t >= lg.from && act.t <= lg.full + 1e-9)) {
         composeWorld(0, 0, 0);
         const side = soleLow('footL').y <= soleLow('footR').y ? 'L' : 'R';
         pitch = clamp(-K1.legPitch(byName, side), -2.7, 2.7);
@@ -1498,7 +1503,7 @@
      centre, every part angle, and the contact hulls. */
   function flipShape(action, t) {
     const { list, M } = flipBodies();
-    K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+    K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t, true), idle: false });
     composeWorld(0, 0, 0);
     const cs = [], phis = [], hulls = [];
     let bx = 0, by = 0;
@@ -1717,7 +1722,7 @@
       return soleLow('head').y - Math.min(soleLow('handL').y, soleLow('handR').y);
     };
     function tripodRoot(t, hint) {
-      K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+      K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t, true), idle: false });
       const span = 30 * Math.PI / 180, step = 0.5 * Math.PI / 180;
       const roots = [];
       let prevP = hint - span, prev = levelGap(prevP);

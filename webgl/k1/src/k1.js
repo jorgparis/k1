@@ -228,12 +228,27 @@
     return (ACTION_DIR[base] || 1) * side;
   }
 
-  /* One decoded keyframe -> raw counts. */
-  function actionRaw(frame) {
+  /* A stunt can ask its legs to travel with a different sign and gain from
+     the global table - Back Flip's own bytes, read with the shared thigh/calf
+     direction, folded the knees the opposite way from the robot. `legGain` on
+     that action is measured from the owner's dialled pose; it applies only to
+     the three leg pitch joints and only inside the marked wind-up window.
+     `file` skips it: the flip solve must still see the shape the bytes say. */
+  function legGain(action, name, t) {
+    const g = action && action.legGain;
+    if (!g || !/^(left|right)(Thigh|Calf|Ankle)$/.test(name)) return 1;
+    const base = name.replace(/^(left|right)/, '').toLowerCase();
+    const w = t <= g.full ? 1 : t >= g.to ? 0 : (g.to - t) / (g.to - g.full);
+    return 1 + (g.gains[base] - 1) * w;
+  }
+
+  /* One decoded keyframe -> raw counts. `file` asks for the unmodified bytes. */
+  function actionRaw(frame, action, file) {
     const raw = {};
     for (const j of JOINTS) {
       const m = (frame.mag && frame.mag[j.name]) || 0;
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * m);
+      const k = file ? 1 : legGain(action, j.name, frame.t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * m * k);
     }
     return raw;
   }
@@ -247,12 +262,12 @@
      is not a stand-up: a robot lying face down has its legs straight, and the
      thigh's neutral is straight. The file is right; it is the body that is on
      the floor, and `contact: "hands"` below is what tells the display that. */
-  function actionPose(action, t) {
+  function actionPose(action, t, file) {
     const f = action.frames;
     if (!f || !f.length) return neutralPose();
-    if (t <= f[0].t) return actionRaw(f[0]);
+    if (t <= f[0].t) return actionRaw(f[0], action, file);
     const last = f[f.length - 1];
-    if (t >= last.t) return actionRaw(last);
+    if (t >= last.t) return actionRaw(last, action, file);
     let i = 1;
     while (i < f.length && f[i].t < t) i++;
     const a = f[i - 1], b = f[i];
@@ -261,7 +276,8 @@
     const raw = {};
     for (const j of JOINTS) {
       const ma = a.mag[j.name] || 0, mb = b.mag[j.name] || 0;
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u));
+      const k = file ? 1 : legGain(action, j.name, t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u) * k);
     }
     return raw;
   }

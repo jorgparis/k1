@@ -1064,6 +1064,34 @@ world(J());
     check('no body part of Back Flip goes through the floor, keyframes or settle',
       bp.bodyLow >= -0.002, (bp.bodyLow * 1000).toFixed(1) + ' mm (' + bp.bodyName + ')');
 
+    /* The owner dialled the legs to the real robot at 1.852 s: 73/173/168 and
+       177/78/84. Read with the shared direction/gain table, this stunt's bytes
+       fold the thighs the other way and leave the soles 230 mm up. The move's
+       own remap has to reach the measured counts and put those soles down,
+       without editing a single decoded magnitude. */
+    const gainM = flipAt('backflip', 1.852);
+    const realLegs = {
+      leftThigh: 73, leftCalf: 173, leftAnkle: 168,
+      rightThigh: 177, rightCalf: 78, rightAnkle: 84
+    };
+    const shownLegs = K1.actionPose(back, 1.852);
+    const legNames = Object.keys(realLegs);
+    check("Back Flip's legs reach the owner's dialled pose at 1.852 s",
+      legNames.every((n) => Math.abs(shownLegs[n] - realLegs[n]) <= 2) &&
+      Math.abs(demo.lean() * 180 / Math.PI - 96.3) < 6 &&
+      Math.max(...['footL', 'footR'].map((n) =>
+        Math.abs(gainM.find((q) => q.name === n).low))) < 0.02,
+      legNames.map((n) => n + ':' + shownLegs[n]).join(' ') + ', lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, soles '
+      + ['footL', 'footR'].map((n) =>
+        (gainM.find((q) => q.name === n).low * 1000).toFixed(0)).join('/') + ' mm');
+    const fileLegs = K1.actionPose(back, 1.852, true);
+    check('the remap is display-only: the decoded Back Flip magnitudes are untouched',
+      fileLegs.leftThigh === 222 && fileLegs.rightThigh === 23 &&
+      back.frames[1].mag.leftThigh === 90 && back.frames[1].mag.rightThigh === 93,
+      'file pose ' + fileLegs.leftThigh + '/' + fileLegs.rightThigh
+      + ', bytes ' + back.frames[1].mag.leftThigh + '/' + back.frames[1].mag.rightThigh);
+
     /* The first part of Back Flip ends in the beat the owner timed at 2.0 s:
        the head and both palms make a triangle on the floor, soles in the air.
        The palms catch the falling body first, then the head comes down to
@@ -1181,7 +1209,7 @@ world(J());
       'file ' + (fileLow * 1000).toFixed(0) + ' mm, dialled '
       + (dialLow * 1000).toFixed(0) + ' mm');
     check('a leg dialled during a frozen flip leans the way its own leg chain says',
-      fileLean < 0 && dialLean > 10,
+      fileLean < 0 && dialLean < fileLean - 10,
       'file ' + fileLean.toFixed(1) + 'deg, dialled ' + dialLean.toFixed(1) + 'deg');
 
     /* The settle is part of the display, not of the measured file. */

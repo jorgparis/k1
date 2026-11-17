@@ -1655,12 +1655,27 @@ void main(){
     return (ACTION_DIR[base] || 1) * side;
   }
 
-  /* One decoded keyframe -> raw counts. */
-  function actionRaw(frame) {
+  /* A stunt can ask its legs to travel with a different sign and gain from
+     the global table - Back Flip's own bytes, read with the shared thigh/calf
+     direction, folded the knees the opposite way from the robot. `legGain` on
+     that action is measured from the owner's dialled pose; it applies only to
+     the three leg pitch joints and only inside the marked wind-up window.
+     `file` skips it: the flip solve must still see the shape the bytes say. */
+  function legGain(action, name, t) {
+    const g = action && action.legGain;
+    if (!g || !/^(left|right)(Thigh|Calf|Ankle)$/.test(name)) return 1;
+    const base = name.replace(/^(left|right)/, '').toLowerCase();
+    const w = t <= g.full ? 1 : t >= g.to ? 0 : (g.to - t) / (g.to - g.full);
+    return 1 + (g.gains[base] - 1) * w;
+  }
+
+  /* One decoded keyframe -> raw counts. `file` asks for the unmodified bytes. */
+  function actionRaw(frame, action, file) {
     const raw = {};
     for (const j of JOINTS) {
       const m = (frame.mag && frame.mag[j.name]) || 0;
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * m);
+      const k = file ? 1 : legGain(action, j.name, frame.t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * m * k);
     }
     return raw;
   }
@@ -1674,12 +1689,12 @@ void main(){
      is not a stand-up: a robot lying face down has its legs straight, and the
      thigh's neutral is straight. The file is right; it is the body that is on
      the floor, and `contact: "hands"` below is what tells the display that. */
-  function actionPose(action, t) {
+  function actionPose(action, t, file) {
     const f = action.frames;
     if (!f || !f.length) return neutralPose();
-    if (t <= f[0].t) return actionRaw(f[0]);
+    if (t <= f[0].t) return actionRaw(f[0], action, file);
     const last = f[f.length - 1];
-    if (t >= last.t) return actionRaw(last);
+    if (t >= last.t) return actionRaw(last, action, file);
     let i = 1;
     while (i < f.length && f[i].t < t) i++;
     const a = f[i - 1], b = f[i];
@@ -1688,7 +1703,8 @@ void main(){
     const raw = {};
     for (const j of JOINTS) {
       const ma = a.mag[j.name] || 0, mb = b.mag[j.name] || 0;
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u));
+      const k = file ? 1 : legGain(action, j.name, t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u) * k);
     }
     return raw;
   }
@@ -1870,7 +1886,9 @@ void main(){
    never a root spin, so +1 means roll backwards onto the back and -1
    means roll forwards onto the front. `tripod` is an observed beat -
    the second at which the head and both palms are on the floor - not
-   a servo value either. No decoded frame is changed. */
+   a servo value either. `legGain` re-maps Back Flip's leg magnitudes
+   from the owner's dialled pose at 1.852 s; it is a display hint for
+   that move alone. No decoded frame is changed. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -2392,6 +2410,7 @@ window.K1ACTIONS = {
   "timing": "trace",
   "flip": 1,
   "tripod": 2.0,
+  "legGain": {"from": 1.5, "full": 1.852, "to": 1.95, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -6321,7 +6340,12 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
          Keep the track's horizontal place and re-solve the lean from the
          dialled leg chain. The file's own pose keeps the free track, so it can
          still leave the floor mid-roll. */
-      if (legsDialled(act.data)) {
+      /* A per-move leg remap is also a change of shape: Back Flip's wind-up
+         pose leans the way its own legs now say, up to the owner's 1.852 s
+         mark. The free track still supplies the place and the later roll. */
+      const lg = act.data.legGain;
+      if (legsDialled(act.data) ||
+          (lg && act.t >= lg.from && act.t <= lg.full + 1e-9)) {
         composeWorld(0, 0, 0);
         const side = soleLow('footL').y <= soleLow('footR').y ? 'L' : 'R';
         pitch = clamp(-K1.legPitch(byName, side), -2.7, 2.7);
@@ -6495,7 +6519,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      centre, every part angle, and the contact hulls. */
   function flipShape(action, t) {
     const { list, M } = flipBodies();
-    K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+    K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t, true), idle: false });
     composeWorld(0, 0, 0);
     const cs = [], phis = [], hulls = [];
     let bx = 0, by = 0;
@@ -6714,7 +6738,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       return soleLow('head').y - Math.min(soleLow('handL').y, soleLow('handR').y);
     };
     function tripodRoot(t, hint) {
-      K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+      K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t, true), idle: false });
       const span = 30 * Math.PI / 180, step = 0.5 * Math.PI / 180;
       const roots = [];
       let prevP = hint - span, prev = levelGap(prevP);

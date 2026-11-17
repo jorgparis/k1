@@ -95,6 +95,23 @@ TRIPOD_MOVES = {
     "backflip": 2.0,
 }
 
+# Back Flip's legs are decoded with the one global direction/gain table, but
+# the owner's hand-dialled mark at 1.852 s (k1-record/1, "compare this pose -
+# it is the real one") shows this stunt's magnitudes need a different mapping:
+# the thigh travels the other way and the calf travels further. The three
+# gains below are fitted from that measured pose against this file's own
+# magnitudes at the same second; they are a display hint for this move only,
+# not new servo bytes. The mapping is fully on by `full`, then blends back to
+# the file's pose by `to` so the free flip solve still owns the roll.
+LEG_GAIN_MOVES = {
+    "backflip": {
+        "from": 1.5,
+        "full": 1.852,
+        "to": 1.95,
+        "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79},
+    },
+}
+
 
 def load_k1(root: Path):
     """Import phone.py, shdecode.py and the spec from a k1 checkout."""
@@ -272,6 +289,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["flip"] = FLIP_MOVES[key]
             if key in TRIPOD_MOVES:
                 entry["tripod"] = TRIPOD_MOVES[key]
+            if key in LEG_GAIN_MOVES:
+                entry["legGain"] = LEG_GAIN_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:
@@ -318,7 +337,9 @@ def render(actions: dict, order: list[str]) -> str:
         "   never a root spin, so +1 means roll backwards onto the back and -1",
         "   means roll forwards onto the front. `tripod` is an observed beat -",
         "   the second at which the head and both palms are on the floor - not",
-        "   a servo value either. No decoded frame is changed. */",
+        "   a servo value either. `legGain` re-maps Back Flip's leg magnitudes",
+        "   from the owner's dialled pose at 1.852 s; it is a display hint for",
+        "   that move alone. No decoded frame is changed. */",
         "window.K1ACTIONS = {",
     ]
     for n, key in enumerate(order):
