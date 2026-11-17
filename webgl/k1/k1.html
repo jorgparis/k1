@@ -7020,8 +7020,59 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
   let bodyPitch = 0;
   function bodyLean() { return bodyPitch; }
 
+  /* `armClear` keeps Back Flip's *file* hands on the floor during the roll.
+     A pose dialled by hand is no longer the shape that swing was fitted to:
+     the owner can abduct both arms fully and fold the elbows, which drops the
+     palms ~90 mm under the floor while the head is seated on it. The real
+     robot carries itself on its head and both palms through this beat, so a
+     hand must not pass through the floor here. The arms are position-controlled
+     print and are kept out of the rigid-body solve (a swinging hand would
+     pole-vault the body), so bring their parts inward after the pose until the
+     lower hand is level with the body's own floor line. Display only: it edits
+     the arm parts' rotations, never the servos, the decoded bytes or the flip
+     track. Enabled by Back Flip's `armClear` hint, so no other move is touched,
+     and only from the triangle on (before it the palms land ahead of the head
+     and deliberately carry the body). */
+  function seatFlipHands(pitch) {
+    const tr = flipTrack(act.data);
+    const tri = tr.tripod;
+    if (!tri || !act.data.armClear ||
+        act.t < (act.data.tripod || tri.from) - 1e-9 ||
+        act.t > act.data.duration_ms / 1000 + 1e-9) return;
+    composeWorld(0, pitch, 0, 0);
+    const low = () => Math.min(soleLow('handL').y, soleLow('handR').y);
+    const target = lowestFlipBody();       // the floor line the head sits on
+    if (low() >= target - 1e-5) return;    // already on or above it
+    const baseL = byName.armL.rot[0], baseR = byName.armR.rot[0];
+    const restore = () => {
+      byName.armL.rot[0] = baseL;
+      byName.armR.rot[0] = baseR;
+      composeWorld(0, pitch, 0, 0);
+    };
+    const apply = (d) => {                 // d radians of inward arm roll
+      byName.armL.rot[0] = baseL - d;
+      byName.armR.rot[0] = baseR + d;
+      composeWorld(0, pitch, 0, 0);
+      return low();
+    };
+    // No further than the servo's own travel: inward on the left is toward its
+    // maximum, on the right toward its minimum; both are the same real swing.
+    const room = Math.min(K1.byJoint.leftArm.max - st.joints.leftArm,
+      st.joints.rightArm - K1.byJoint.rightArm.min);
+    let hi = Math.max(0, room) * K1.degPerCount * DEG;
+    if (hi <= 0 || apply(hi) < target - 1e-5) { restore(); return; } // unreachable
+    let lo = 0;
+    for (let i = 0; i < 22; i++) {
+      const m = (lo + hi) * 0.5;
+      if (apply(m) < target - 1e-5) lo = m; else hi = m;
+    }
+    apply(hi);
+  }
+
   function updateWorld() {
-    const s = support();
+    let s = support();
+    if (act.data && act.data.flip) seatFlipHands(s.pitch);
+    s = support();                         // re-seat with the corrected hands
     composeWorld(s.ty, s.pitch, s.tx, s.tz);
     bodyPitch = s.pitch;
     /* Safety net: if the pose puts the other foot - or, in a contact action,
@@ -7029,8 +7080,8 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
        between two touching keyframes), lift the whole model until nothing is
        under it. The support point then sits a little high, which is what a real
        limb does when another part is on the ground. A flip is the exception:
-       only the parts the flip solve puts on the floor count - its arms are not
-       contacts (Back Flip keeps its hands clear with the `armClear` remap).
+       only the parts the flip solve puts on the floor count - Back Flip keeps
+       its hands clear with the `armClear` hint and the `seatFlipHands` seating.
        Display only. */
     const low = act.data && act.data.flip
       ? lowestFlipBody()

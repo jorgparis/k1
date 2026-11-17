@@ -1233,6 +1233,49 @@ world(J());
       'file leftArm ' + K1.actionPose(back, 3.3, true).leftArm
       + ', shown ' + K1.actionPose(back, 3.3).leftArm);
 
+    /* A second mark caught the arms under the floor with a pose dialled by
+       hand: at the upside-down beat (lean 141deg, head on the floor) fully
+       abducted arms and folded elbows put both palms ~90 mm under it. The
+       file's `armClear` swing was fitted to the file's arms, not this pose, so
+       `seatFlipHands` brings the dialled arm parts inward until the lower hand
+       is level with the body - without lifting the head off the floor. */
+    const dialled = {
+      leftThigh: 229, leftCalf: 10, leftAnkle: 143,
+      rightThigh: 18, rightCalf: 240, rightAnkle: 109,
+      leftShoulder: 102, rightShoulder: 146,
+      leftHip: 123, leftFoot: 125, rightHip: 129, rightFoot: 115,
+      leftArm: 33, leftHand: 37, rightArm: 224, rightHand: 204, head: 122
+    };
+    const dialAt = (t) => {
+      demo.playAction('backflip');
+      demo.act.playing = false;
+      demo.act.t = t;
+      demo.st.joints = Object.assign({}, dialled);
+      demo.st.target = demo.st.joints;
+      tick(1);
+      return demo.measure();
+    };
+    const dM = dialAt(2.96);
+    check("a dialled Back Flip pose keeps its head and both hands on the floor",
+      demo.lean() > 135 * Math.PI / 180 &&
+      Math.abs(atPart(dM, 'head').low) < 0.01 &&
+      Math.abs(atPart(dM, 'handL').low) < 0.01 &&
+      Math.abs(atPart(dM, 'handR').low) < 0.01 &&
+      dialled.leftArm === 33 && dialled.rightArm === 224,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(dM, 'head').low * 1000).toFixed(0) + ' mm, hands '
+      + (atPart(dM, 'handL').low * 1000).toFixed(0) + '/'
+      + (atPart(dM, 'handR').low * 1000).toFixed(0) + ' mm');
+    let dWorst = 9, dWorstT = 0;
+    for (let t = 2.96; t <= 4.05; t += 1 / 60) {
+      const m = dialAt(t);
+      const h = Math.min(atPart(m, 'handL').low, atPart(m, 'handR').low) * 1000;
+      if (h < dWorst) { dWorst = h; dWorstT = t; }
+    }
+    check("a dialled Back Flip pose never drags a hand under the floor",
+      dWorst > -0.005 * 1000,
+      'worst ' + dWorst.toFixed(0) + ' mm at ' + dWorstT.toFixed(2) + 's');
+
     const bend = flipAt('backflip', bfA.frames[5].t);
     const bendM = demo.measure();
     check('Back Flip comes to rest on its back after the roll, head clear',
