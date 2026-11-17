@@ -105,7 +105,7 @@ TRIPOD_MOVES = {
 # the file's pose by `to` so the free flip solve still owns the roll.
 LEG_GAIN_MOVES = {
     "backflip": {
-        "from": 1.5,
+        "from": 0,
         "full": 1.852,
         "to": 1.95,
         "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79},

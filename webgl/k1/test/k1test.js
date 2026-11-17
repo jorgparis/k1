@@ -1092,6 +1092,21 @@ world(J());
       'file pose ' + fileLegs.leftThigh + '/' + fileLegs.rightThigh
       + ', bytes ' + back.frames[1].mag.leftThigh + '/' + back.frames[1].mag.rightThigh);
 
+    /* The owner marked 1.369 s with the body already bending back over both
+       planted soles. Playback used to keep the free solve's upright root there;
+       only Recall's one-count slider nudge re-solved from the legs. The file's
+       own pose must lean in plain playback too. */
+    const earlyM = flipAt('backflip', 1.369);
+    const earlyFile = K1.actionPose(back, 1.369);
+    check('Back Flip leans back at 1.369 s in playback, without a dialled pose',
+      demo.lean() * 180 / Math.PI > 25 &&
+      demo.st.joints.leftCalf === earlyFile.leftCalf &&
+      ['footL', 'footR'].every((n) =>
+        Math.abs(earlyM.find((q) => q.name === n).low) < 0.01),
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, soles '
+      + ['footL', 'footR'].map((n) =>
+        (earlyM.find((q) => q.name === n).low * 1000).toFixed(0)).join('/') + ' mm');
+
     /* The first part of Back Flip ends in the beat the owner timed at 2.0 s:
        the head and both palms make a triangle on the floor, soles in the air.
        The palms catch the falling body first, then the head comes down to
@@ -1209,7 +1224,7 @@ world(J());
       'file ' + (fileLow * 1000).toFixed(0) + ' mm, dialled '
       + (dialLow * 1000).toFixed(0) + ' mm');
     check('a leg dialled during a frozen flip leans the way its own leg chain says',
-      fileLean < 0 && dialLean < fileLean - 10,
+      dialLean < fileLean - 10,
       'file ' + fileLean.toFixed(1) + 'deg, dialled ' + dialLean.toFixed(1) + 'deg');
 
     /* The settle is part of the display, not of the measured file. */
