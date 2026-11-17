@@ -142,9 +142,9 @@ MARK_POSE_MOVES = {
         "t": 3.461,
         "from": 3.35,
         "to": 3.55,
-        # The owner's record has the head on the floor (0 mm) and both palms
-        # ~90 mm under it. Seat this beat on the head, not the palms, so the
-        # dialled pose appears with the body flipped over the planted head.
+        # The owner's record wants the head and both palms on the floor
+        # together. Solve the root pitch that levels all three contacts for
+        # these exact dialled joints, with no hand passing under the floor.
         "seat": "head",
         "pose": {
             "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,

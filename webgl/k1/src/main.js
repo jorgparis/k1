@@ -989,9 +989,9 @@
     st.target = p;
     st.joints = p;
     act.rootT = act.data.flip && m.model ? modelTime(act.data, m.model) : null;
-    /* A mark that recorded the head planted keeps that contact. The dialled
-       arms fold under the floor at this lean; seating on them would lift the
-       head, so the body goes back on its head exactly as the owner saw it. */
+    /* A mark flagged with a head-and-palms triangle keeps all three contacts.
+       Its root is solved to level the head and both hands for the dialled
+       arms, rather than seating on the palms and lifting the head. */
     act.headSeat = !!(act.data.flip && m.seat === 'head');
     return true;
   }
@@ -1377,6 +1377,37 @@
      neutral pose. The caller lifts the whole model only if the *other* foot
      would go through the floor. The clamp stops a nonsense pose (a fall, a
      kick) from spinning the model over. */
+  /* Solve the one root pitch that puts the head and both palms on the same
+     floor line for the pose actually on screen. The file's own triangle solve
+     does this for the file's arms; a mark carries a dialled pose, whose arms
+     need their own level crossing. The servos are untouched - only the body's
+     root tilts until all three contacts agree. */
+  function headTriangleRoot() {
+    const gap = (p) => {
+      composeWorld(0, p, 0, 0);
+      return soleLow('head').y - Math.min(soleLow('handL').y, soleLow('handR').y);
+    };
+    const centre = Math.PI, span = 30 * Math.PI / 180, step = Math.PI / 180;
+    let prevP = centre - span, prev = gap(prevP), best = null;
+    for (let p = prevP + step; p <= centre + span + 1e-9; p += step) {
+      const g = gap(p);
+      if (prev * g <= 0) {
+        let lo = prevP, hi = p, gl = prev;
+        for (let k = 0; k < 24; k++) {
+          const mid = (lo + hi) * 0.5, gm = gap(mid);
+          if (gl * gm <= 0) hi = mid; else { lo = mid; gl = gm; }
+        }
+        const root = (lo + hi) * 0.5;
+        if (best == null || Math.abs(root - centre) < Math.abs(best - centre)) best = root;
+      }
+      prev = g; prevP = p;
+    }
+    if (best == null) return null;
+    composeWorld(0, best, 0, 0);
+    const low = Math.min(soleLow('head').y, soleLow('handL').y, soleLow('handR').y);
+    return { pitch: best, ty: -low };
+  }
+
   function support() {
     /* A flip has already left the floor. Its root is not solved by planting a
        sole: it is the free rigid-body track below, measured once from the same
@@ -1413,14 +1444,21 @@
       const tri = flipTrack(act.data).tripod;
       /* Through Back Flip's roll the dialled hands are the lowest point; seat
          the body on them instead of rotating the arms, so every joint the owner
-         dialled stays exactly as set. The one exception is the owner's own mark:
-         it recorded the head on the floor, so that still sits on the head with
-         the body flipped over it. Other flips keep the original window. */
+         dialled stays exactly as set. The owner's own mark is the exception:
+         it keeps the head-and-palms triangle, so its root pitch is solved to
+         level all three contacts. Other flips keep the original window. */
       const palms = !act.headSeat && tri && rt >= tri.from &&
         (rt <= tri.to || (act.data.armClear &&
          rt <= act.data.duration_ms / 1000));
+      /* The mark is a three-point contact: keep the head and both palms on
+         the floor together by solving the lean for this exact dialled pose. */
+      let seatTy = null;
+      if (act.headSeat) {
+        const htr = headTriangleRoot();
+        if (htr) { pitch = htr.pitch; seatTy = htr.ty; }
+      }
       composeWorld(0, pitch, s.px, 0);
-      let ty = -lowestFlipBody();
+      let ty = seatTy != null ? seatTy : -lowestFlipBody();
       if (palms) ty = -Math.min(-ty, soleLow('handL').y, soleLow('handR').y);
       return { pitch, tx: s.px, tz: 0, ty };
     }

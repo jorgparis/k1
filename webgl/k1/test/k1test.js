@@ -1241,9 +1241,9 @@ world(J());
        dialled pose is the observation: seat the body on the palms instead,
        keeping every joint exactly as set. At 141deg the hands sit ~92 mm
        below the head, so with the hands planted the head necessarily lifts.
-       The owner's own mark is the exception: it recorded the head on the
-       floor with both palms ~90 mm under it, so that still sits on the head
-       and the body flips over it, with every dialled joint still exact. */
+       The owner's own mark is the exception: the head and both palms must
+       stay on the floor together. Its root pitch is solved to the level
+       crossing for these dialled arms, with every joint still exact. */
     const dialled = {
       leftThigh: 229, leftCalf: 10, leftAnkle: 143,
       rightThigh: 18, rightCalf: 240, rightAnkle: 109,
@@ -1262,11 +1262,12 @@ world(J());
     };
     const jointsExact = () => Object.keys(dialled)
       .every((k) => demo.st.joints[k] === dialled[k]);
-    /* The owner's mark is a head plant: head on the floor, palms ~90 mm under
-       it and the legs flipped up over it. */
-    const onHead = (m) =>
+    /* The owner's mark is a three-point contact: head and both palms level
+       on the floor, with the body flipped over them. */
+    const onTriangle = (m) =>
       Math.abs(atPart(m, 'head').low) < 0.01 &&
-      atPart(m, 'handL').low < -0.07 && atPart(m, 'handR').low < -0.07;
+      Math.abs(atPart(m, 'handL').low) < 0.01 &&
+      Math.abs(atPart(m, 'handR').low) < 0.01;
     const dM = dialAt(2.96);
     check("a dialled Back Flip pose keeps every dialled joint and both hands on the floor",
       demo.lean() > 135 * Math.PI / 180 &&
@@ -1297,9 +1298,9 @@ world(J());
     demo.seek('backflip', 3.461);
     tick(1);
     const scrubM = demo.measure();
-    check("scrubbing to 3.461 shows the mark's values on its head",
-      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      onHead(scrubM),
+    check("scrubbing to 3.461 shows the mark's triangle and joints",
+      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 177.6) < 1 &&
+      onTriangle(scrubM),
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (atPart(scrubM, 'head').low * 1000).toFixed(0) + ' mm, hands '
       + (atPart(scrubM, 'handL').low * 1000).toFixed(0) + '/'
@@ -1308,24 +1309,26 @@ world(J());
     demo.seek('backflip', 3.404);
     tick(1);
     const scrubM2 = demo.measure();
-    check("scrubbing to 3.404 (the owner's clock) also shows the mark on its head",
-      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      onHead(scrubM2),
+    check("scrubbing to 3.404 (the owner's clock) also shows the mark's triangle",
+      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 177.6) < 1 &&
+      onTriangle(scrubM2),
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (atPart(scrubM2, 'head').low * 1000).toFixed(0) + ' mm, joints '
       + (jointsExact() ? 'exact' : 'changed'));
     demo.seek('backflip', 3.2);
     tick(1);
     check('the mark override is scoped to its beat window, not the whole roll',
-      demo.st.joints.leftArm !== 33 && Math.abs(demo.lean() * 180 / Math.PI - 141.1) > 5,
+      demo.st.joints.leftArm !== 33 && Math.abs(demo.lean() * 180 / Math.PI - 177.6) > 5,
       'leftArm ' + demo.st.joints.leftArm + ', lean '
       + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');
 
     /* The owner's actual record: its page clock says 3.461 s but its `model`
        block is the file's 2.958 s pose (the clock is approximate). Seeking the
        mark used to re-solve the root from 3.461 s and show 79deg, nowhere near
-       the recorded 141.1deg head-down shape. The mark must restore that shape
-       while keeping its own clock and every dialled joint. */
+       the recorded head-down shape. The mark must restore the dialled joints
+       and its three-point contact while keeping its own clock and root. The
+       low heights in the record came from an older head-only solve; keeping
+       the real head-and-palms triangle changes the lean and part heights. */
     const ownerMark = {
       format: 'k1-record/1',
       marks: [{
@@ -1350,13 +1353,10 @@ world(J());
     tick(1);
     const markM = demo.measure();
     const markHands = Math.min(atPart(markM, 'handL').low, atPart(markM, 'handR').low);
-    check("the owner's 3.461 s mark shows its recorded head-planted 141deg pose",
+    check("the owner's 3.461 s mark keeps its joints and head-and-palms triangle",
       jointsExact() && Math.abs(demo.record.clock().t - 3.461) < 1e-9 &&
-      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      onHead(markM) &&
-      Math.abs(atPart(markM, 'pelvis').low - 0.290) < 0.01 &&
-      Math.abs(atPart(markM, 'torso').low - 0.051) < 0.01 &&
-      Math.abs(atPart(markM, 'footL').low - 0.390) < 0.02 &&
+      Math.abs(demo.lean() * 180 / Math.PI - 177.6) < 1 &&
+      onTriangle(markM) &&
       Math.abs(atPart(markM, 'pelvis').x - (-0.226)) < 0.01 &&
       Math.abs(demo.act.rootT - 2.958) < 0.05,
       'clock ' + demo.record.clock().t.toFixed(3) + 's, root file time '
@@ -1367,9 +1367,10 @@ world(J());
       + (jointsExact() ? 'exact' : 'changed'));
     demo.record.recall();
     tick(1);
-    check("recalling the dialled pose keeps the mark's recorded root",
+    check("recalling the dialled pose keeps the mark's recorded root and triangle",
       demo.act.rootT != null &&
-      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 && jointsExact(),
+      Math.abs(demo.lean() * 180 / Math.PI - 177.6) < 1 &&
+      onTriangle(demo.measure()) && jointsExact(),
       'root file time ' + demo.act.rootT + 's, lean '
       + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');
     demo.playAction('backflip');
@@ -1821,10 +1822,10 @@ world(J());
       demo.act.playing === false && demo.act.rootT != null &&
       Math.abs(demo.act.rootT - 2.958) < 0.05,
       'booted=' + win.__K1_BOOTED + ' t=' + demo.act.t + ' rootT=' + demo.act.rootT);
-    check('the fresh deep link shows the recorded lean with the head planted',
-      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
+    check('the fresh deep link shows the level head-and-palms triangle',
+      Math.abs(demo.lean() * 180 / Math.PI - 177.6) < 1 &&
       Math.abs(g('head').low) < 0.01 &&
-      g('handL').low < -0.07 && g('handR').low < -0.07,
+      Math.abs(g('handL').low) < 0.01 && Math.abs(g('handR').low) < 0.01,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (g('head').low * 1000).toFixed(0) + ' mm, hands '
       + (g('handL').low * 1000).toFixed(0) + '/' + (g('handR').low * 1000).toFixed(0) + ' mm');
