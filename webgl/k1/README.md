@@ -194,8 +194,9 @@ pose as well and counts how many joints differ from the file; a joint edit
 freezes the take instead of ending it, so the clock survives, and a head or
 arm edit leaves the take's lean alone. Move a leg and the lean is re-solved
 from the leg chain, because the legs are what decide which way the body tips.
-Either way the dialled pose is re-seated vertically on the lowest body part so
-it neither hangs above the floor nor sinks into it. A mark
+Either way the dialled pose is re-seated vertically on the part carrying it —
+the lowest body part, or the hands once Back Flip rolls onto them — so it
+neither hangs above the floor nor sinks into it. A mark
 with no pose of its own is just the model's pose
 — it is not evidence that the robot agreed.
 
@@ -334,10 +335,13 @@ Four things the bytes do not carry, and where they are decided instead:
   Coulomb friction integrate one planar track for the whole take, and the
   angular momentum the servo-driven tuck carries (`hrel`) is what starts the
   spin. The solve runs at 1/120 s: at 1/60 s the contact choice is chaotic, and
-  a 1e-7 change flipped the outcome. The arms are excluded from the contact
-  shape — a swinging hand otherwise pole-vaults the body into a second roll.
-  Back Flip adds a small move-only `armClear` swing after the triangle so its
-  hands do not pass through the floor as the body rolls (see below). Every flip's
+  a 1e-7 change flipped the outcome. The arms are excluded from the rigid-body
+  solve — a swinging hand otherwise pole-vaults the body into a second roll —
+  but their geometry still takes part in *seating*: from the triangle on, Back
+  Flip's lowest palm joins the floor line, so the body is seated on the hands
+  instead of the arms being rotated to meet the floor (see below). Back Flip
+  also adds a small move-only `armClear` swing so the file's own hands do not
+  pass through the floor as the body rolls. Every flip's
   last keyframe is neutral, so the free solve would snap the body upright at
   the file's end; instead the root is blended from the solve back to the
   neutral standing root over the final segment (starting at the last non-neutral
@@ -403,16 +407,22 @@ Four things the bytes do not carry, and where they are decided instead:
   only: the decoded arm bytes and the flip solve are unchanged.
   A third mark found the same bug with a pose *dialled by hand*: fully abducted
   arms and folded elbows (leftArm 33, leftHand 37, rightArm 224, rightHand 204)
-  dropped both palms ~90 mm under the floor while the head sat on it at 141°
-  of lean. The keyed swing above was fitted to the file's arms and cannot know
-  a dialled pose, so from the triangle on `seatFlipHands` brings the arm parts
-  inward after the pose until the lower hand is level with the body's floor
-  line. The head stays where the triangle put it, the body's root and the free
-  track are untouched, and no hand passes under the floor for any pose across
-  the whole roll. Like `armClear` it is display only and Back Flip only.
+  dropped both palms ~90 mm under the floor at 141° of lean. The keyed swing
+  above was fitted to the file's arms and cannot know a dialled pose, and
+  rotating the arm servos to reach the floor would change the angles the owner
+  dialled. Those joints are the observation, so from the triangle on the
+  *body* is seated on the lowest palm instead: the root height is the more
+  restrictive of the body hull and the two hands, with `armClear` gating the
+  extended window on Back Flip only. Every dialled joint — all 17, arms and
+  legs — is shown exactly as set; no hand passes under the floor for any pose
+  across the whole roll. At 141° the hands sit ~92 mm below the head, so with
+  the hands planted the head necessarily lifts (about 91 mm at the 2.96 s
+  beat, 157 mm at the mark's approximate 3.461 s); head and hands can only be
+  level together near 177°, a different posture. This changes no decoded byte
+  and no joint: it is a display seating decision, Back Flip only.
   That triangle is a root solve from the file's own pose, not an arm IK: the arm
-  servos come from the script (with the small clearance swing and dialled-pose
-  seating above).
+  servos come straight from the script (as modified by the file's own clearance
+  swing), and a dialled pose overrides them verbatim.
   Back Flip therefore leans back, plants
   its palms, puts its head down with them at 2.0 s, holds that triangle through
   the upside-down beat, rolls over it and lies on its back from about 3.3 s to
@@ -539,7 +549,9 @@ Two limits are worth stating plainly:
   solved from the head and palm geometry: the palms catch the body first and
   the head comes down to them. That reproduces the shape and the sequence, not
   the load path — no arm IK, and no force feedback. After the triangle the roll
-  is the free solve again, so the hands still pass under the opaque floor.
+  is the free solve again for the body's lean and travel, but Back Flip keeps
+  the palms in the *seating*, so they stay on the floor through the roll no
+  matter which pose is on screen.
 
 The file-side evidence for the motion is the progress trace, not the owner's
 clock: `backflip` has ten records, the head-down keyframe arrives at 2.0 s, and
@@ -550,7 +562,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, its move-only leg remap reaches the owner's dialled counts at 1.852 s with the soles planted while the decoded magnitudes and the free track stay untouched, plain playback leans back over both planted soles at 1.369 s without a dialled pose, the triangle holds the owner's later upside-down beat at 2.856 s, plain playback stretches the legs there to the owner's dialled counts without a slider touched and keeps the file's own bytes underneath, and stretched legs dialled there do not stand the robot up, its hands do not sink through the floor during the roll and the arm clearance is display-only with the decoded bytes untouched, a dialled pose keeps its head and both hands on the floor at the 141° beat and never drags a hand under it through the roll, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take and keeps its clock), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor and leans the way its own leg chain says instead of keeping the file's root, and a keystroke typed into a text field no longer fires the shortcuts; and Back Flip's observed triangle: the palms carry the body before the head lands, at 2.0 s the head and both palms are on the floor with the corrected knees still folded low, the leg bend survives the owner's 2.022 s mark, the triangle holds through the upside-down beat at 2.856 s even with stretched legs dialled, and the beat is bounded before the free roll takes over |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, its move-only leg remap reaches the owner's dialled counts at 1.852 s with the soles planted while the decoded magnitudes and the free track stay untouched, plain playback leans back over both planted soles at 1.369 s without a dialled pose, the triangle holds the owner's later upside-down beat at 2.856 s, plain playback stretches the legs there to the owner's dialled counts without a slider touched and keeps the file's own bytes underneath, and stretched legs dialled there do not stand the robot up, its hands do not sink through the floor during the roll and the arm clearance is display-only with the decoded bytes untouched, a dialled pose keeps all 17 dialled joints exact and both hands on the floor at the 141° beat (the head lifts), never drags a hand under it or changes a joint through the roll, and a pasted 3.461 s mark with that pose seeks back with the same joints, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take and keeps its clock), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor and leans the way its own leg chain says instead of keeping the file's root, and a keystroke typed into a text field no longer fires the shortcuts; and Back Flip's observed triangle: the palms carry the body before the head lands, at 2.0 s the head and both palms are on the floor with the corrected knees still folded low, the leg bend survives the owner's 2.022 s mark, the triangle holds through the upside-down beat at 2.856 s even with stretched legs dialled, and the beat is bounded before the free roll takes over |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

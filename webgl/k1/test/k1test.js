@@ -1234,11 +1234,13 @@ world(J());
       + ', shown ' + K1.actionPose(back, 3.3).leftArm);
 
     /* A second mark caught the arms under the floor with a pose dialled by
-       hand: at the upside-down beat (lean 141deg, head on the floor) fully
-       abducted arms and folded elbows put both palms ~90 mm under it. The
-       file's `armClear` swing was fitted to the file's arms, not this pose, so
-       `seatFlipHands` brings the dialled arm parts inward until the lower hand
-       is level with the body - without lifting the head off the floor. */
+       hand: at the upside-down beat (lean 141deg) fully abducted arms and
+       folded elbows put both palms ~90 mm under it. The file's `armClear`
+       swing was fitted to the file's arms, not this pose, and rotating the
+       arms to reach the floor would change the angles the owner dialled. The
+       dialled pose is the observation: seat the body on the palms instead,
+       keeping every joint exactly as set. At 141deg the hands sit ~92 mm
+       below the head, so with the hands planted the head necessarily lifts. */
     const dialled = {
       leftThigh: 229, leftCalf: 10, leftAnkle: 143,
       rightThigh: 18, rightCalf: 240, rightAnkle: 109,
@@ -1255,26 +1257,51 @@ world(J());
       tick(1);
       return demo.measure();
     };
+    const jointsExact = () => Object.keys(dialled)
+      .every((k) => demo.st.joints[k] === dialled[k]);
     const dM = dialAt(2.96);
-    check("a dialled Back Flip pose keeps its head and both hands on the floor",
+    check("a dialled Back Flip pose keeps every dialled joint and both hands on the floor",
       demo.lean() > 135 * Math.PI / 180 &&
-      Math.abs(atPart(dM, 'head').low) < 0.01 &&
+      atPart(dM, 'head').low > 0.05 && // hands are the lowest point at 141deg
       Math.abs(atPart(dM, 'handL').low) < 0.01 &&
       Math.abs(atPart(dM, 'handR').low) < 0.01 &&
-      dialled.leftArm === 33 && dialled.rightArm === 224,
+      jointsExact(),
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (atPart(dM, 'head').low * 1000).toFixed(0) + ' mm, hands '
       + (atPart(dM, 'handL').low * 1000).toFixed(0) + '/'
-      + (atPart(dM, 'handR').low * 1000).toFixed(0) + ' mm');
-    let dWorst = 9, dWorstT = 0;
-    for (let t = 2.96; t <= 4.05; t += 1 / 60) {
+      + (atPart(dM, 'handR').low * 1000).toFixed(0) + ' mm, joints '
+      + (jointsExact() ? 'exact' : 'changed'));
+    let dWorst = 9, dWorstT = 0, dExact = true;
+    for (let t = 2.85; t <= 4.5; t += 1 / 60) {
       const m = dialAt(t);
       const h = Math.min(atPart(m, 'handL').low, atPart(m, 'handR').low) * 1000;
       if (h < dWorst) { dWorst = h; dWorstT = t; }
+      if (!jointsExact()) dExact = false;
     }
-    check("a dialled Back Flip pose never drags a hand under the floor",
-      dWorst > -0.005 * 1000,
-      'worst ' + dWorst.toFixed(0) + ' mm at ' + dWorstT.toFixed(2) + 's');
+    check("a dialled Back Flip pose never drags a hand under the floor or changes a joint",
+      dWorst > -0.005 * 1000 && dExact,
+      'worst ' + dWorst.toFixed(0) + ' mm at ' + dWorstT.toFixed(2)
+      + 's, joints ' + (dExact ? 'exact' : 'changed'));
+
+    /* The owner's record says t=3.461 but carries the 141deg pose; the record
+       note already calls t approximate. Seeking the mark must restore the
+       exact dialled joints and plant the hands wherever the clock says. */
+    opts.els.recPaste.value = JSON.stringify({
+      format: 'k1-record/1',
+      marks: [{ n: 1, action: 'backflip', t: 3.461, note: 'dialled pose',
+        lean: 141.1, pose: dialled }]
+    });
+    demo.record.paste();
+    demo.record.seek(0);
+    tick(1);
+    const markM = demo.measure();
+    const markHands = Math.min(atPart(markM, 'handL').low, atPart(markM, 'handR').low);
+    check("a pasted mark keeps the dialled joints exact and its hands on the floor",
+      jointsExact() && Math.abs(demo.record.clock().t - 3.461) < 1e-9 &&
+      markHands > -0.005 && markHands < 0.01,
+      't=' + demo.record.clock().t.toFixed(3) + 's, hands '
+      + (markHands * 1000).toFixed(0) + ' mm, joints '
+      + (jointsExact() ? 'exact' : 'changed'));
 
     const bend = flipAt('backflip', bfA.frames[5].t);
     const bendM = demo.measure();
