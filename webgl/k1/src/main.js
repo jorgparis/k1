@@ -1326,10 +1326,13 @@
          still leave the floor mid-roll. */
       /* A per-move leg remap is also a change of shape: Back Flip's wind-up
          pose leans the way its own legs now say, up to the owner's 1.852 s
-         mark. The free track still supplies the place and the later roll. */
+         mark. Only before the triangle: once the head and arms carry the
+         body, straight legs must not stand it back up (the owner dialled
+         stretched legs at the upside-down beat and saw exactly that). */
       const lg = act.data.legGain;
-      if (legsDialled(act.data) ||
-          (lg && act.t >= lg.from && act.t <= lg.full + 1e-9)) {
+      if (act.t < (act.data.tripod || Infinity) &&
+          (legsDialled(act.data) ||
+           (lg && act.t >= lg.from && act.t <= lg.full + 1e-9))) {
         composeWorld(0, 0, 0);
         const side = soleLow('footL').y <= soleLow('footR').y ? 'L' : 'R';
         pitch = clamp(-K1.legPitch(byName, side), -2.7, 2.7);
@@ -1767,18 +1770,29 @@
           px[i] = sign * ((1 - u) * worldPx(i) + u * pxC);
           py[i] = (1 - u) * py[i] + u * root.ty;
         }
-        /* Hold the three-point contact until the free solve has caught up,
-           then let the roll go back to being a free rigid body. */
-        let hint = root.pitch, iTo = ic;
+        /* Hold the three-point contact through the owner's later upside-down
+           beat (about 2.8 s on the page clock): the free solve lifts the head
+           180 mm by then, though the robot is still on its head and arms.
+           Then blend the root back to the free rigid-body roll, so the body
+           comes off its head smoothly instead of snapping to the old track. */
+        let hint = root.pitch, iTo = ic, heldTy = root.ty;
+        const holdUntil = action.tripodUntil || tc;
         for (let i = ic + 1; i < n; i++) {
+          if (i * dt > holdUntil) break;
           const r = tripodRoot(i * dt, hint);
           if (!r) break;
-          if (palmGap(i) >= -0.003 &&
-              Math.abs(r.pitch - worldPitch(i)) < 2 * Math.PI / 180) break;
-          hint = r.pitch;
+          hint = r.pitch; heldTy = r.ty;
           pitch[i] = sign * r.pitch;
           py[i] = r.ty;
           iTo = i;
+        }
+        if (iTo > ic && iTo + 1 < n) {
+          const blendTo = Math.min(n - 1, iTo + Math.round(0.35 / dt));
+          for (let i = iTo + 1; i <= blendTo; i++) {
+            const u = (i - iTo) / (blendTo - iTo);
+            pitch[i] = sign * ((1 - u) * hint + u * worldPitch(i));
+            py[i] = (1 - u) * heldTy + u * py[i];
+          }
         }
         tripod = { from: iFrom * dt, to: iTo * dt };
       }

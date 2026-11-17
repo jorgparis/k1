@@ -1153,10 +1153,45 @@ world(J());
       + (atPart(catchM, 'handL').low * 1000).toFixed(0) + '/'
       + (atPart(catchM, 'handR').low * 1000).toFixed(0) + ' mm, head '
       + (atPart(catchM, 'head').low * 1000).toFixed(0) + ' mm');
+    /* The owner's later mark has the robot still upside down on its head and
+       arms at about 2.8 s (the file's arms at that mark match 2.255 s, so the
+       page clock is approximate). The free solve had lifted the head 180 mm
+       by 2.856 s; the held triangle must carry the body through that beat. */
+    const upM = flipAt('backflip', 2.856);
+    check('Back Flip holds the head-and-arms triangle at 2.856 s',
+      demo.lean() > 130 * Math.PI / 180 &&
+      Math.abs(atPart(upM, 'head').low) < 0.01 &&
+      Math.abs(atPart(upM, 'handL').low) < 0.01 &&
+      Math.abs(atPart(upM, 'handR').low) < 0.01 &&
+      Math.min(atPart(upM, 'footL').low, atPart(upM, 'footR').low) > 0.4,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(upM, 'head').low * 1000).toFixed(0) + ' mm, palms '
+      + (atPart(upM, 'handL').low * 1000).toFixed(0) + '/'
+      + (atPart(upM, 'handR').low * 1000).toFixed(0) + ' mm, soles '
+      + (atPart(upM, 'footL').low * 1000).toFixed(0) + '/'
+      + (atPart(upM, 'footR').low * 1000).toFixed(0) + ' mm');
+    /* Dialling the stretched legs the owner drew at that mark used to make
+       the leg-chain lean solve stand the robot up: head 736 mm, soles on the
+       floor. Past the wind-up the head and arms own the root, not the legs. */
+    const stretched = Object.assign(K1.actionPose(back, 2.856), {
+      leftThigh: 112, leftCalf: 66, leftAnkle: 113,
+      rightThigh: 135, rightCalf: 189, rightAnkle: 138
+    });
+    demo.st.joints = stretched; demo.st.target = stretched;
+    tick(1);
+    const stretchM = demo.measure();
+    check('stretched legs dialled at 2.856 s keep the robot on its head',
+      demo.lean() > 130 * Math.PI / 180 &&
+      Math.abs(atPart(stretchM, 'head').low) < 0.01 &&
+      Math.min(atPart(stretchM, 'footL').low, atPart(stretchM, 'footR').low) > 0.4,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(stretchM, 'head').low * 1000).toFixed(0) + ' mm, soles '
+      + (atPart(stretchM, 'footL').low * 1000).toFixed(0) + '/'
+      + (atPart(stretchM, 'footR').low * 1000).toFixed(0) + ' mm');
     const triWin = track.tripod;
-    check('the triangle is a bounded beat, then the free roll takes over',
+    check('the triangle holds the upside-down beat, then the free roll takes over',
       triWin && triWin.from < bfA.tripod && bfA.tripod < triWin.to &&
-      triWin.to < bfA.frames[3].t && bp.peakT > triWin.to,
+      triWin.to >= 2.856 && triWin.to < bfA.frames[5].t,
       triWin ? triWin.from.toFixed(2) + '..' + triWin.to.toFixed(2) + 's' : 'no window');
 
     const bend = flipAt('backflip', bfA.frames[5].t);

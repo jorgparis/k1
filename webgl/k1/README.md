@@ -371,16 +371,26 @@ Four things the bytes do not carry, and where they are decided instead:
   contacts, so at that second it ran both palms under the floor with the head
   still 27 mm up. The display now solves the root that puts the head and both
   palms level and re-seats them on the floor at that beat, letting the palms
-  carry the body from the moment they reach it (about 1.82 s) and holding the
-  triangle until about 2.19 s. That is a root solve from the file's own pose,
-  not an arm IK: the arm servos still come straight from the script. Back Flip
-  therefore leans back, plants its palms, puts its head down with them at
-  2.0 s, rolls over it and lies on its back from about 2.6 s to 5.7 s (about
-  74° of pitch, head clear, feet raised by the bent knees), then stands up as
-  the last keyframe arrives at 6.47 s. With the remap the wind-up instead reads
-95° of lean at 1.852 s with both soles on the floor, keeps the bend through
-the triangle at 2.0 s (the knees stay folded under the body, soles still low)
-and blends back to the file's pose by 2.4 s for the unchanged roll. Front Flip is
+  carry the body from the moment they reach it (about 1.82 s). The owner also
+  marked the robot still upside down on its head and arms at about 2.8 s (the
+  page clock is approximate: the arms in that mark match the file at 2.255 s).
+  The free solve had already lifted the head 180 mm by 2.856 s, so
+  `tripodUntil: 2.95` holds the three-point contact through that beat and then
+  blends the root back to the free roll over 0.35 s. At 2.856 s the display
+  reads 143° of lean with the head at 0 mm, palms at 0/2 mm and the soles
+  750 mm up. Dialling stretched legs there used to stand the robot up (head
+  736 mm, soles on the floor): the leg-chain lean solve is now confined to the
+  wind-up, before the triangle, so the head and arms own the root from then on.
+  That is a root solve from the file's own pose, not an arm IK: the arm servos
+  still come straight from the script. Back Flip therefore leans back, plants
+  its palms, puts its head down with them at 2.0 s, holds that triangle through
+  the upside-down beat, rolls over it and lies on its back from about 3.3 s to
+  5.7 s (about 74° of pitch, head clear, feet raised by the bent knees), then
+  stands up as the last keyframe arrives at 6.47 s. With the remap the wind-up
+  instead reads 95° of lean at 1.852 s with both soles on the floor, keeps the
+  bend through the triangle at 2.0 s (the knees stay folded under the body,
+  soles still low) and blends back to the file's pose by 2.4 s for the roll.
+  Front Flip is
   the same track mirrored in X: it tips to within about 4 cm of its head at
   2.52 s — the measured clock leaves it short of the floor — and stands back up
   by 8.67 s. Keep Rolling Backward puts its head down at about 3.3 s, lies on
@@ -508,7 +518,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, its move-only leg remap reaches the owner's dialled counts at 1.852 s with the soles planted while the decoded magnitudes and the free track stay untouched, plain playback leans back over both planted soles at 1.369 s without a dialled pose, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take and keeps its clock), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor and leans the way its own leg chain says instead of keeping the file's root, and a keystroke typed into a text field no longer fires the shortcuts; and Back Flip's observed triangle: the palms carry the body before the head lands, at 2.0 s the head and both palms are on the floor with the corrected knees still folded low, the leg bend survives the owner's 2.022 s mark, and the beat is bounded before the free roll takes over |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, its move-only leg remap reaches the owner's dialled counts at 1.852 s with the soles planted while the decoded magnitudes and the free track stay untouched, plain playback leans back over both planted soles at 1.369 s without a dialled pose, the triangle holds the owner's later upside-down beat at 2.856 s and stretched legs dialled there do not stand the robot up, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take and keeps its clock), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor and leans the way its own leg chain says instead of keeping the file's root, and a keystroke typed into a text field no longer fires the shortcuts; and Back Flip's observed triangle: the palms carry the body before the head lands, at 2.0 s the head and both palms are on the floor with the corrected knees still folded low, the leg bend survives the owner's 2.022 s mark, the triangle holds through the upside-down beat at 2.856 s even with stretched legs dialled, and the beat is bounded before the free roll takes over |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

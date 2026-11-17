@@ -95,6 +95,15 @@ TRIPOD_MOVES = {
     "backflip": 2.0,
 }
 
+# The owner also marked the robot still upside down, head and arms in the
+# triangle, at about 2.8 s (the page clock is approximate: the file's arms at
+# that mark match 2.255 s). Hold the three-point contact through that beat
+# instead of handing straight back to the free solve at 2.19 s, which had
+# already lifted the head 180 mm by 2.856 s.
+TRIPOD_UNTIL = {
+    "backflip": 2.95,
+}
+
 # Back Flip's legs are decoded with the one global direction/gain table, but
 # the owner's hand-dialled mark at 1.852 s (k1-record/1, "compare this pose -
 # it is the real one") shows this stunt's magnitudes need a different mapping:
@@ -293,6 +302,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["flip"] = FLIP_MOVES[key]
             if key in TRIPOD_MOVES:
                 entry["tripod"] = TRIPOD_MOVES[key]
+            if key in TRIPOD_UNTIL:
+                entry["tripodUntil"] = TRIPOD_UNTIL[key]
             if key in LEG_GAIN_MOVES:
                 entry["legGain"] = LEG_GAIN_MOVES[key]
             if "contact" in dec:
@@ -341,7 +352,8 @@ def render(actions: dict, order: list[str]) -> str:
         "   never a root spin, so +1 means roll backwards onto the back and -1",
         "   means roll forwards onto the front. `tripod` is an observed beat -",
         "   the second at which the head and both palms are on the floor - not",
-        "   a servo value either. `legGain` re-maps Back Flip's leg magnitudes",
+        "   a servo value either; `tripodUntil` holds that contact through the",
+        "   owner's later upside-down beat. `legGain` re-maps Back Flip's leg magnitudes",
         "   from the owner's dialled pose at 1.852 s; it is a display hint for",
         "   that move alone. No decoded frame is changed. */",
         "window.K1ACTIONS = {",

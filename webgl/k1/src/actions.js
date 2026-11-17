@@ -25,7 +25,8 @@
    never a root spin, so +1 means roll backwards onto the back and -1
    means roll forwards onto the front. `tripod` is an observed beat -
    the second at which the head and both palms are on the floor - not
-   a servo value either. `legGain` re-maps Back Flip's leg magnitudes
+   a servo value either; `tripodUntil` holds that contact through the
+   owner's later upside-down beat. `legGain` re-maps Back Flip's leg magnitudes
    from the owner's dialled pose at 1.852 s; it is a display hint for
    that move alone. No decoded frame is changed. */
 window.K1ACTIONS = {
@@ -549,6 +550,7 @@ window.K1ACTIONS = {
   "timing": "trace",
   "flip": 1,
   "tripod": 2.0,
+  "tripodUntil": 2.95,
   "legGain": {"from": 0, "full": 1.852, "hold": 2.19, "to": 2.4, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}},
   "file": "ProAction/back flip.sh",
   "frames": [
