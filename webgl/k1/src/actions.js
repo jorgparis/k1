@@ -27,8 +27,9 @@
    the second at which the head and both palms are on the floor - not
    a servo value either; `tripodUntil` holds that contact through the
    owner's later upside-down beat. `legGain` re-maps Back Flip's leg magnitudes
-   from the owner's dialled pose at 1.852 s; it is a display hint for
-   that move alone. No decoded frame is changed. */
+   from the owner's dialled poses; `armClear` swings its arms toward the
+   body during the roll so the hands do not sink through the floor. Both
+   are display hints for that move alone. No decoded frame is changed. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -552,6 +553,7 @@ window.K1ACTIONS = {
   "tripod": 2.0,
   "tripodUntil": 2.95,
   "legGain": {"from": 0, "full": 1.852, "keys": [{"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}}]},
+  "armClear": {"keys": [{"t": 2.95, "v": 0}, {"t": 2.98, "v": -26}, {"t": 3.039, "v": -43}, {"t": 3.1, "v": -51}, {"t": 3.3, "v": -54}, {"t": 3.5, "v": -46}, {"t": 3.7, "v": -40}, {"t": 3.8, "v": -34}, {"t": 3.9, "v": -22}, {"t": 4.0, "v": 0}]},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},

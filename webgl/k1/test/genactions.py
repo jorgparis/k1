@@ -132,6 +132,31 @@ LEG_GAIN_MOVES = {
     },
 }
 
+# Back Flip's arms are position-controlled print and are left out of the free
+# rigid-body solve. As the body rolls onto its back after the head-and-palms
+# triangle, the file's fixed arm angle drags the hands under the floor: at the
+# owner's 3.039 s mark they read -97/-152 mm. Fitting the abduction that keeps
+# the lowest hand on the floor across the roll gives a small, smooth swing of
+# both arms toward the body (max ~54 counts, well inside travel), peaking at
+# about 3.3 s and back to the file's own shape by 4.0 s. `v` is the change in
+# arm magnitude; it is a display hint for this move only, not a servo byte.
+ARM_CLEAR_MOVES = {
+    "backflip": {
+        "keys": [
+            {"t": 2.95, "v": 0},
+            {"t": 2.98, "v": -26},
+            {"t": 3.039, "v": -43},
+            {"t": 3.1, "v": -51},
+            {"t": 3.3, "v": -54},
+            {"t": 3.5, "v": -46},
+            {"t": 3.7, "v": -40},
+            {"t": 3.8, "v": -34},
+            {"t": 3.9, "v": -22},
+            {"t": 4.0, "v": 0},
+        ],
+    },
+}
+
 
 def load_k1(root: Path):
     """Import phone.py, shdecode.py and the spec from a k1 checkout."""
@@ -313,6 +338,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["tripodUntil"] = TRIPOD_UNTIL[key]
             if key in LEG_GAIN_MOVES:
                 entry["legGain"] = LEG_GAIN_MOVES[key]
+            if key in ARM_CLEAR_MOVES:
+                entry["armClear"] = ARM_CLEAR_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:
@@ -361,8 +388,9 @@ def render(actions: dict, order: list[str]) -> str:
         "   the second at which the head and both palms are on the floor - not",
         "   a servo value either; `tripodUntil` holds that contact through the",
         "   owner's later upside-down beat. `legGain` re-maps Back Flip's leg magnitudes",
-        "   from the owner's dialled pose at 1.852 s; it is a display hint for",
-        "   that move alone. No decoded frame is changed. */",
+        "   from the owner's dialled poses; `armClear` swings its arms toward the",
+        "   body during the roll so the hands do not sink through the floor. Both",
+        "   are display hints for that move alone. No decoded frame is changed. */",
         "window.K1ACTIONS = {",
     ]
     for n, key in enumerate(order):

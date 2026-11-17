@@ -258,13 +258,34 @@
     return ks[ks.length - 1].gains[base];
   }
 
+  /* Back Flip's arms are position-controlled print, left out of the rigid
+     body, so as it rolls onto its back the file's fixed arm angle drags the
+     hands under the floor. `armClear` swings both arms toward the body by a
+     small keyed amount after the head-and-palms triangle, keeping the hands on
+     the floor instead of sinking through it. Display only, this move only;
+     `file` skips it so the flip solve still sees the shape the bytes say. */
+  function armClear(action, name, t) {
+    const g = action && action.armClear;
+    if (!g || !/^(left|right)Arm$/.test(name)) return 0;
+    const ks = g.keys;
+    if (t <= ks[0].t) return ks[0].v;
+    for (let i = 1; i < ks.length; i++) {
+      if (t <= ks[i].t) {
+        const a = ks[i - 1], b = ks[i], u = (t - a.t) / (b.t - a.t);
+        return a.v + (b.v - a.v) * u;
+      }
+    }
+    return ks[ks.length - 1].v;
+  }
+
   /* One decoded keyframe -> raw counts. `file` asks for the unmodified bytes. */
   function actionRaw(frame, action, file) {
     const raw = {};
     for (const j of JOINTS) {
       const m = (frame.mag && frame.mag[j.name]) || 0;
       const k = file ? 1 : legGain(action, j.name, frame.t);
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * m * k);
+      const clear = file ? 0 : armClear(action, j.name, frame.t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (m + clear) * k);
     }
     return raw;
   }
@@ -293,7 +314,8 @@
     for (const j of JOINTS) {
       const ma = a.mag[j.name] || 0, mb = b.mag[j.name] || 0;
       const k = file ? 1 : legGain(action, j.name, t);
-      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u) * k);
+      const clear = file ? 0 : armClear(action, j.name, t);
+      raw[j.name] = clampRaw(j.name, j.neutral + actionDir(j.name) * (ma + (mb - ma) * u + clear) * k);
     }
     return raw;
   }

@@ -1413,8 +1413,9 @@
          controlled print, not free limbs: on the real robot a hand can press on
          the floor without moving the pelvis. Leaving them in the rigid body
          made a swinging hand pole-vault the whole robot into a second roll.
-         Anything below the floor is hidden by the floor plane, so the price is
-         only that a forearm can pass under it during the tumble. The one
+         Back Flip carries a small move-only `armClear` swing so its
+         position-controlled hands do not pass under the floor as it rolls onto
+         its back; that is a display remap, never a contact in the solve. The
          observed exception is the head-and-palms triangle: at `tripod` on the
          clock the palms join the *seating* (not the rigid-body solve), so they
          catch the body on the way down and stay with the head for a moment.
@@ -1970,8 +1971,9 @@
        between two touching keyframes), lift the whole model until nothing is
        under it. The support point then sits a little high, which is what a real
        limb does when another part is on the ground. A flip is the exception:
-       its arms are allowed under the floor while the body rolls, so only the
-       parts the flip solve actually put on the floor count. Display only. */
+       only the parts the flip solve puts on the floor count - its arms are not
+       contacts (Back Flip keeps its hands clear with the `armClear` remap).
+       Display only. */
     const low = act.data && act.data.flip
       ? lowestFlipBody()
       : act.data && act.data.contact === 'seat'

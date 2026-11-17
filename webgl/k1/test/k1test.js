@@ -1208,6 +1208,31 @@ world(J());
       triWin.to >= 2.856 && triWin.to < bfA.frames[5].t,
       triWin ? triWin.from.toFixed(2) + '..' + triWin.to.toFixed(2) + 's' : 'no window');
 
+    /* The owner marked hands -97/-152 mm under the floor at 3.039 s. The arms
+       are left out of the rigid body, so the file's fixed arm angle dragged
+       them through it as the body rolled onto its back. `armClear` swings both
+       arms toward the body after the triangle: no hand may sink on the way. */
+    const handLow = (t) => {
+      flipAt('backflip', t);
+      const m = demo.measure();
+      return Math.min(atPart(m, 'handL').low, atPart(m, 'handR').low) * 1000;
+    };
+    let worstHand = 9, worstHandT = 0;
+    for (let t = 2.95; t <= 4.05; t += 1 / 60) {
+      const h = handLow(t);
+      if (h < worstHand) { worstHand = h; worstHandT = t; }
+    }
+    check("Back Flip's hands do not sink through the floor during the roll",
+      worstHand > -0.005 * 1000 && Math.abs(handLow(3.039)) < 0.03 * 1000,
+      'worst ' + worstHand.toFixed(0) + ' mm at ' + worstHandT.toFixed(2)
+      + 's, at 3.039s ' + handLow(3.039).toFixed(0) + ' mm');
+    check("Back Flip's arm clearance is a display-only hint, not new bytes",
+      back.armClear && back.armClear.keys.length > 0 &&
+      K1.actionPose(back, 3.3).leftArm !== K1.actionPose(back, 3.3, true).leftArm &&
+      K1.actionPose(back, 2.0).leftArm === K1.actionPose(back, 2.0, true).leftArm,
+      'file leftArm ' + K1.actionPose(back, 3.3, true).leftArm
+      + ', shown ' + K1.actionPose(back, 3.3).leftArm);
+
     const bend = flipAt('backflip', bfA.frames[5].t);
     const bendM = demo.measure();
     check('Back Flip comes to rest on its back after the roll, head clear',
