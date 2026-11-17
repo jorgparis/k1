@@ -135,13 +135,17 @@ LEG_GAIN_MOVES = {
 # The owner's 3.461 s mark records a dialled Back Flip pose. Its page clock is
 # approximate: the `model` block is the file's 2.958 s pose. File that
 # observation as a display hint so scrubbing or deep-linking to 3.461 s shows
-# the marked pose and lean without needing the record pasted first. No servo
-# byte changes; this only overrides what a still at that second displays.
+# the marked pose, lean and head plant without needing the record pasted first.
+# No servo byte changes; this only overrides what a still at that second shows.
 MARK_POSE_MOVES = {
     "backflip": {
         "t": 3.461,
         "from": 3.35,
         "to": 3.55,
+        # The owner's record has the head on the floor (0 mm) and both palms
+        # ~90 mm under it. Seat this beat on the head, not the palms, so the
+        # dialled pose appears with the body flipped over the planted head.
+        "seat": "head",
         "pose": {
             "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,
             "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109,

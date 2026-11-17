@@ -2453,7 +2453,7 @@ window.K1ACTIONS = {
   "tripodUntil": 2.95,
   "legGain": {"from": 0, "full": 1.852, "keys": [{"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}}]},
   "armClear": {"keys": [{"t": 2.95, "v": 0}, {"t": 2.98, "v": -26}, {"t": 3.039, "v": -43}, {"t": 3.1, "v": -51}, {"t": 3.3, "v": -54}, {"t": 3.5, "v": -46}, {"t": 3.7, "v": -40}, {"t": 3.8, "v": -34}, {"t": 3.9, "v": -22}, {"t": 4.0, "v": 0}]},
-  "markPose": {"t": 3.461, "from": 3.35, "to": 3.55, "pose": {"leftThigh": 229, "leftCalf": 10, "leftAnkle": 143, "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204, "head": 122}, "model": {"leftThigh": 116, "leftCalf": 65, "leftAnkle": 112, "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126, "head": 122}},
+  "markPose": {"t": 3.461, "from": 3.35, "to": 3.55, "seat": "head", "pose": {"leftThigh": 229, "leftCalf": 10, "leftAnkle": 143, "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204, "head": 122}, "model": {"leftThigh": 116, "leftCalf": 65, "leftAnkle": 112, "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126, "head": 122}},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -5277,7 +5277,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      `K1.actionPose` samples the keyframes. It writes target *and* joints, so
      the model follows the file's own frames instead of easing through them -
      the easing would round off exactly the sharp beats the file encodes. */
-  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null };
+  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null, headSeat: false };
 
   /* The manual recorder. The BLE protocol has no telemetry channel, so this
      page cannot learn what the real robot did by itself; a person watching the
@@ -5294,7 +5294,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      the last hand-made pose so it can be put back on screen, at the same second,
      and marked after the fact. Only joint edits fill it - a preset or a reset is
      the demo's own pose, not an observation of the robot. */
-  const hold = { pose: null, key: null, t: 0, rootT: null };
+  const hold = { pose: null, key: null, t: 0, rootT: null, headSeat: false };
 
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
@@ -5307,6 +5307,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     act.data = a;
     act.t = 0;
     act.rootT = null;
+    act.headSeat = false;
     act.playing = true;
     rec.at = { key, t: 0 };
     st.scene = 'ACTION: ' + a.name.toUpperCase();
@@ -5336,6 +5337,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
   function stopAction() {
     act.playing = false;
     act.rootT = null;
+    act.headSeat = false;
     act.data = null;
     act.key = null;
     act.name = null;
@@ -5790,6 +5792,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     hold.key = rec.at.key;
     hold.t = rec.at.t;
     hold.rootT = act.rootT;
+    hold.headSeat = act.headSeat;
     syncHold();
   }
 
@@ -5807,6 +5810,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
        second the mark is about. */
     st.joints = p;
     act.rootT = hold.rootT;
+    act.headSeat = hold.headSeat;
     st.scene = 'RECALLED POSE';
     /* The mark that should have been made then can still be made: the clock
        goes back to the second the pose was dialled against. */
@@ -5986,6 +5990,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     act.playing = wasPlaying;
     act.t = clamp(t, 0, lim);
     act.rootT = null;
+    act.headSeat = false;
     rec.at = { key, t: act.t };
     const p = K1.actionPose(a, act.t);
     st.target = p;
@@ -6043,6 +6048,10 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     st.target = p;
     st.joints = p;
     act.rootT = act.data.flip && m.model ? modelTime(act.data, m.model) : null;
+    /* A mark that recorded the head planted keeps that contact. The dialled
+       arms fold under the floor at this lean; seating on them would lift the
+       head, so the body goes back on its head exactly as the owner saw it. */
+    act.headSeat = !!(act.data.flip && m.seat === 'head');
     return true;
   }
 
@@ -6463,8 +6472,10 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       const tri = flipTrack(act.data).tripod;
       /* Through Back Flip's roll the dialled hands are the lowest point; seat
          the body on them instead of rotating the arms, so every joint the owner
-         dialled stays exactly as set. Other flips keep the original window. */
-      const palms = tri && rt >= tri.from &&
+         dialled stays exactly as set. The one exception is the owner's own mark:
+         it recorded the head on the floor, so that still sits on the head with
+         the body flipped over it. Other flips keep the original window. */
+      const palms = !act.headSeat && tri && rt >= tri.from &&
         (rt <= tri.to || (act.data.armClear &&
          rt <= act.data.duration_ms / 1000));
       composeWorld(0, pitch, s.px, 0);

@@ -1240,7 +1240,10 @@ world(J());
        arms to reach the floor would change the angles the owner dialled. The
        dialled pose is the observation: seat the body on the palms instead,
        keeping every joint exactly as set. At 141deg the hands sit ~92 mm
-       below the head, so with the hands planted the head necessarily lifts. */
+       below the head, so with the hands planted the head necessarily lifts.
+       The owner's own mark is the exception: it recorded the head on the
+       floor with both palms ~90 mm under it, so that still sits on the head
+       and the body flips over it, with every dialled joint still exact. */
     const dialled = {
       leftThigh: 229, leftCalf: 10, leftAnkle: 143,
       rightThigh: 18, rightCalf: 240, rightAnkle: 109,
@@ -1259,6 +1262,11 @@ world(J());
     };
     const jointsExact = () => Object.keys(dialled)
       .every((k) => demo.st.joints[k] === dialled[k]);
+    /* The owner's mark is a head plant: head on the floor, palms ~90 mm under
+       it and the legs flipped up over it. */
+    const onHead = (m) =>
+      Math.abs(atPart(m, 'head').low) < 0.01 &&
+      atPart(m, 'handL').low < -0.07 && atPart(m, 'handR').low < -0.07;
     const dM = dialAt(2.96);
     check("a dialled Back Flip pose keeps every dialled joint and both hands on the floor",
       demo.lean() > 135 * Math.PI / 180 &&
@@ -1289,18 +1297,22 @@ world(J());
     demo.seek('backflip', 3.461);
     tick(1);
     const scrubM = demo.measure();
-    check("scrubbing to 3.461 shows the mark's values without opening the mark",
+    check("scrubbing to 3.461 shows the mark's values on its head",
       jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      Math.min(atPart(scrubM, 'handL').low, atPart(scrubM, 'handR').low) > -0.005,
-      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, joints '
+      onHead(scrubM),
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(scrubM, 'head').low * 1000).toFixed(0) + ' mm, hands '
+      + (atPart(scrubM, 'handL').low * 1000).toFixed(0) + '/'
+      + (atPart(scrubM, 'handR').low * 1000).toFixed(0) + ' mm, joints '
       + (jointsExact() ? 'exact' : 'changed'));
     demo.seek('backflip', 3.404);
     tick(1);
     const scrubM2 = demo.measure();
-    check("scrubbing to 3.404 (the owner's clock) also shows the mark's values",
+    check("scrubbing to 3.404 (the owner's clock) also shows the mark on its head",
       jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      Math.min(atPart(scrubM2, 'handL').low, atPart(scrubM2, 'handR').low) > -0.005,
-      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, joints '
+      onHead(scrubM2),
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(scrubM2, 'head').low * 1000).toFixed(0) + ' mm, joints '
       + (jointsExact() ? 'exact' : 'changed'));
     demo.seek('backflip', 3.2);
     tick(1);
@@ -1338,11 +1350,13 @@ world(J());
     tick(1);
     const markM = demo.measure();
     const markHands = Math.min(atPart(markM, 'handL').low, atPart(markM, 'handR').low);
-    check("the owner's 3.461 s mark shows its recorded 141deg pose, not the 79deg file frame",
+    check("the owner's 3.461 s mark shows its recorded head-planted 141deg pose",
       jointsExact() && Math.abs(demo.record.clock().t - 3.461) < 1e-9 &&
       Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      markHands > -0.005 && markHands < 0.01 &&
-      atPart(markM, 'head').low > 0.05 &&
+      onHead(markM) &&
+      Math.abs(atPart(markM, 'pelvis').low - 0.290) < 0.01 &&
+      Math.abs(atPart(markM, 'torso').low - 0.051) < 0.01 &&
+      Math.abs(atPart(markM, 'footL').low - 0.390) < 0.02 &&
       Math.abs(atPart(markM, 'pelvis').x - (-0.226)) < 0.01 &&
       Math.abs(demo.act.rootT - 2.958) < 0.05,
       'clock ' + demo.record.clock().t.toFixed(3) + 's, root file time '
@@ -1807,10 +1821,12 @@ world(J());
       demo.act.playing === false && demo.act.rootT != null &&
       Math.abs(demo.act.rootT - 2.958) < 0.05,
       'booted=' + win.__K1_BOOTED + ' t=' + demo.act.t + ' rootT=' + demo.act.rootT);
-    check('the fresh deep link shows the recorded lean with hands on the floor',
+    check('the fresh deep link shows the recorded lean with the head planted',
       Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
-      Math.abs(g('handL').low) < 0.01 && Math.abs(g('handR').low) < 0.01,
-      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, hands '
+      Math.abs(g('head').low) < 0.01 &&
+      g('handL').low < -0.07 && g('handR').low < -0.07,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (g('head').low * 1000).toFixed(0) + ' mm, hands '
       + (g('handL').low * 1000).toFixed(0) + '/' + (g('handR').low * 1000).toFixed(0) + ' mm');
     check('the fresh deep link sets every dialled joint on the model and the panel',
       exact(demo) && sl.length === 17 &&

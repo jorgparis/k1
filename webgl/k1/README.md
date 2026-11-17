@@ -196,16 +196,19 @@ arm edit leaves the take's lean alone. Move a leg and the lean is re-solved
 from the leg chain, because the legs are what decide which way the body tips.
 Either way the dialled pose is re-seated vertically on the part carrying it —
 the lowest body part, or the hands once Back Flip rolls onto them — so it
-neither hangs above the floor nor sinks into it. For a flip the mark also
-carries the file pose that produced its recorded lean: because the page clock
-is approximate, opening the mark solves the root from the file time whose pose
-matches that stored block, while the note keeps the second you pressed. The
-owner's 3.461 s observation is additionally filed as a `markPose` hint on Back
-Flip, covering the 3.35–3.55 s band the owner's approximate page clock has
-actually read for that beat (3.404 s and 3.461 s), so scrubbing or deep-linking
-anywhere in it shows the marked pose and 141° root even on a fresh load, without
-pasting the record first. That is why a mark made there with no slider change
-still records the dialled pose and lean rather than the file's later 79° frame.
+neither hangs above the floor nor sinks into it. A mark that recorded the head
+on the floor is the exception: that still is seated on the head, so the body
+stays flipped over the planted head with every dialled joint exact. For a flip
+the mark also carries the file pose that produced its recorded lean: because
+the page clock is approximate, opening the mark solves the root from the file
+time whose pose matches that stored block, while the note keeps the second you
+pressed. The owner's 3.461 s observation is additionally filed as a `markPose`
+hint on Back Flip, covering the 3.35–3.55 s band the owner's approximate page
+clock has actually read for that beat (3.404 s and 3.461 s), so scrubbing or
+deep-linking anywhere in it shows the marked pose and 141° root even on a fresh
+load, without pasting the record first. That is why a mark made there with no
+slider change still records the dialled pose and lean rather than the file's
+later 79° frame.
 A mark with no pose of its own is just the model's pose
 — it is not evidence that the robot agreed.
 
@@ -224,7 +227,7 @@ than editing the bundle.
 | `src/gl.js` | program / mesh / FBO / canvas-texture helpers |
 | `src/shaders.js` | sky, grid floor, planar shadow, scene, post |
 | `src/k1.js` | the `JOINTS` table, 19-part rig, neutral pose, clamping, pose, `.sh` direction + sampler |
-| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat and Back Flip's dialled `markPose` over the 3.35–3.55 s page-clock band; `window.K1ACTIONS` + `K1ACTION_LIST` |
+| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat and Back Flip's head-planted `markPose` over the 3.35–3.55 s page-clock band; `window.K1ACTIONS` + `K1ACTION_LIST` |
 | `src/hud.js` | 320×200 1-bit HUD |
 | `src/music.js` | chiptune sequencer |
 | `src/main.js` | GL setup, render passes, camera, servo panel, presets, action player, recorder, input |
@@ -348,8 +351,10 @@ Four things the bytes do not carry, and where they are decided instead:
   solve — a swinging hand otherwise pole-vaults the body into a second roll —
   but their geometry still takes part in *seating*: from the triangle on, Back
   Flip's lowest palm joins the floor line, so the body is seated on the hands
-  instead of the arms being rotated to meet the floor (see below). Back Flip
-  also adds a small move-only `armClear` swing so the file's own hands do not
+  instead of the arms being rotated to meet the floor (see below). The owner's
+  head-planted mark is the exception: that still is seated on the head (see
+  below). Back Flip also adds a small move-only `armClear` swing so the file's
+  own hands do not
   pass through the floor as the body rolls. Every flip's
   last keyframe is neutral, so the free solve would snap the body upright at
   the file's end; instead the root is blended from the solve back to the
@@ -426,9 +431,13 @@ Four things the bytes do not carry, and where they are decided instead:
   legs — is shown exactly as set; no hand passes under the floor for any pose
   across the whole roll. At 141° the hands sit ~92 mm below the head, so with
   the hands planted the head necessarily lifts (about 91 mm at the 2.96 s
-  beat, 157 mm at the mark's approximate 3.461 s); head and hands can only be
-  level together near 177°, a different posture. This changes no decoded byte
-  and no joint: it is a display seating decision, Back Flip only.
+  beat). The owner's own mark is the exception: it recorded the head at 0 mm
+  and both palms ~90 mm under it, so that still — reached by scrubbing or
+  deep-linking anywhere in the 3.35–3.55 s band, or by opening the mark — is
+  seated on the head instead. The dialled joints are untouched: the head sits
+  on the floor, the body flips over it, and the palms read −90/−90 mm as
+  recorded. This changes no decoded byte and no joint: it is a display seating
+  decision, Back Flip only.
   That triangle is a root solve from the file's own pose, not an arm IK: the arm
   servos come straight from the script (as modified by the file's own clearance
   swing), and a dialled pose overrides them verbatim.
@@ -550,9 +559,9 @@ Two limits are worth stating plainly:
   pose, so the file at 3.461 s is a later 79° frame. The observation is filed
   as a generated `markPose` hint on Back Flip: scrubbing or deep-linking
   anywhere in the 3.35–3.55 s band shows the dialled joints and the recorded
-  141° root, with the hands seated on the floor and the head lifted ~90 mm.
-  Times outside that band still show the file, and playing the take drops the
-  override.
+  141° root, with the head on the floor and both palms ~90 mm under it, as the
+  mark recorded. Times outside that band still show the file, and playing the
+  take drops the override.
 * the leg remap is fitted from two hand-dialled marks, not from a sweep of the
   robot's travel. It makes Back Flip's wind-up and stretched-leg beat reach the
   poses the owner measured, but other magnitudes in the same stunt are inferred

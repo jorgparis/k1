@@ -218,7 +218,7 @@
      `K1.actionPose` samples the keyframes. It writes target *and* joints, so
      the model follows the file's own frames instead of easing through them -
      the easing would round off exactly the sharp beats the file encodes. */
-  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null };
+  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null, headSeat: false };
 
   /* The manual recorder. The BLE protocol has no telemetry channel, so this
      page cannot learn what the real robot did by itself; a person watching the
@@ -235,7 +235,7 @@
      the last hand-made pose so it can be put back on screen, at the same second,
      and marked after the fact. Only joint edits fill it - a preset or a reset is
      the demo's own pose, not an observation of the robot. */
-  const hold = { pose: null, key: null, t: 0, rootT: null };
+  const hold = { pose: null, key: null, t: 0, rootT: null, headSeat: false };
 
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
@@ -248,6 +248,7 @@
     act.data = a;
     act.t = 0;
     act.rootT = null;
+    act.headSeat = false;
     act.playing = true;
     rec.at = { key, t: 0 };
     st.scene = 'ACTION: ' + a.name.toUpperCase();
@@ -277,6 +278,7 @@
   function stopAction() {
     act.playing = false;
     act.rootT = null;
+    act.headSeat = false;
     act.data = null;
     act.key = null;
     act.name = null;
@@ -731,6 +733,7 @@
     hold.key = rec.at.key;
     hold.t = rec.at.t;
     hold.rootT = act.rootT;
+    hold.headSeat = act.headSeat;
     syncHold();
   }
 
@@ -748,6 +751,7 @@
        second the mark is about. */
     st.joints = p;
     act.rootT = hold.rootT;
+    act.headSeat = hold.headSeat;
     st.scene = 'RECALLED POSE';
     /* The mark that should have been made then can still be made: the clock
        goes back to the second the pose was dialled against. */
@@ -927,6 +931,7 @@
     act.playing = wasPlaying;
     act.t = clamp(t, 0, lim);
     act.rootT = null;
+    act.headSeat = false;
     rec.at = { key, t: act.t };
     const p = K1.actionPose(a, act.t);
     st.target = p;
@@ -984,6 +989,10 @@
     st.target = p;
     st.joints = p;
     act.rootT = act.data.flip && m.model ? modelTime(act.data, m.model) : null;
+    /* A mark that recorded the head planted keeps that contact. The dialled
+       arms fold under the floor at this lean; seating on them would lift the
+       head, so the body goes back on its head exactly as the owner saw it. */
+    act.headSeat = !!(act.data.flip && m.seat === 'head');
     return true;
   }
 
@@ -1404,8 +1413,10 @@
       const tri = flipTrack(act.data).tripod;
       /* Through Back Flip's roll the dialled hands are the lowest point; seat
          the body on them instead of rotating the arms, so every joint the owner
-         dialled stays exactly as set. Other flips keep the original window. */
-      const palms = tri && rt >= tri.from &&
+         dialled stays exactly as set. The one exception is the owner's own mark:
+         it recorded the head on the floor, so that still sits on the head with
+         the body flipped over it. Other flips keep the original window. */
+      const palms = !act.headSeat && tri && rt >= tri.from &&
         (rt <= tri.to || (act.data.armClear &&
          rt <= act.data.duration_ms / 1000));
       composeWorld(0, pitch, s.px, 0);
