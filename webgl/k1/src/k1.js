@@ -232,13 +232,16 @@
      the global table - Back Flip's own bytes, read with the shared thigh/calf
      direction, folded the knees the opposite way from the robot. `legGain` on
      that action is measured from the owner's dialled pose; it applies only to
-     the three leg pitch joints and only inside the marked wind-up window.
-     `file` skips it: the flip solve must still see the shape the bytes say. */
+     the three leg pitch joints, through the wind-up and the head-and-palms
+     beat, then blends away before the roll. `file` skips it: the flip solve
+     must still see the shape the bytes say. */
   function legGain(action, name, t) {
     const g = action && action.legGain;
     if (!g || !/^(left|right)(Thigh|Calf|Ankle)$/.test(name)) return 1;
     const base = name.replace(/^(left|right)/, '').toLowerCase();
-    const w = t <= g.full ? 1 : t >= g.to ? 0 : (g.to - t) / (g.to - g.full);
+    const w = t <= g.full ? 1 : t >= g.to ? 0 :
+      (g.hold && t <= g.hold) ? 1 :
+      (g.to - t) / (g.to - (g.hold || g.full));
     return 1 + (g.gains[base] - 1) * w;
   }
 

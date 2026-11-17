@@ -102,12 +102,16 @@ TRIPOD_MOVES = {
 # gains below are fitted from that measured pose against this file's own
 # magnitudes at the same second; they are a display hint for this move only,
 # not new servo bytes. The mapping is fully on by `full`, then blends back to
-# the file's pose by `to` so the free flip solve still owns the roll.
+# the file's pose by `to` so the free flip solve still owns the roll. `hold`
+# keeps the measured bend through the owner's 2.022 s beat - the decoded pose
+# snaps the thighs back the other way just as the head lands, which the robot
+# does not do - then blends it away before the roll's next keyframe.
 LEG_GAIN_MOVES = {
     "backflip": {
         "from": 0,
         "full": 1.852,
-        "to": 1.95,
+        "hold": 2.19,
+        "to": 2.4,
         "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79},
     },
 }

@@ -1108,26 +1108,47 @@ world(J());
         (earlyM.find((q) => q.name === n).low * 1000).toFixed(0)).join('/') + ' mm');
 
     /* The first part of Back Flip ends in the beat the owner timed at 2.0 s:
-       the head and both palms make a triangle on the floor, soles in the air.
-       The palms catch the falling body first, then the head comes down to
-       them - the free solve alone ran both palms under the floor. */
+       the head and both palms make a triangle on the floor. With this stunt's
+       corrected legs the knees stay folded under the falling body, so the
+       soles are still low here - the old check for soles > 0.3 m was written
+       from the decoded inverse-leg pose, which is the thing being fixed. The
+       palms catch the falling body first, then the head comes down to them. */
     const triM = flipAt('backflip', bfA.tripod);
     check('Back Flip puts the head and both palms on the floor at 2.0 s',
       bfA.tripod === 2 && demo.lean() > 100 * Math.PI / 180 &&
       Math.abs(atPart(triM, 'head').low) < 0.01 &&
       Math.abs(atPart(triM, 'handL').low) < 0.01 &&
       Math.abs(atPart(triM, 'handR').low) < 0.01 &&
-      Math.min(atPart(triM, 'footL').low, atPart(triM, 'footR').low) > 0.3,
+      Math.max(atPart(triM, 'footL').low, atPart(triM, 'footR').low) < 0.15,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (atPart(triM, 'head').low * 1000).toFixed(0) + ' mm, palms '
       + (atPart(triM, 'handL').low * 1000).toFixed(0) + '/'
-      + (atPart(triM, 'handR').low * 1000).toFixed(0) + ' mm');
-    const catchM = flipAt('backflip', 1.9);
+      + (atPart(triM, 'handR').low * 1000).toFixed(0) + ' mm, soles '
+      + (atPart(triM, 'footL').low * 1000).toFixed(0) + '/'
+      + (atPart(triM, 'footR').low * 1000).toFixed(0) + ' mm');
+    /* The owner marked 2.022 s with the head and palms still down, lean 130,
+       and the legs still bent the way they were at 1.852 s: the decoded pose
+       snaps both thighs back the other way right at this beat. The hold on
+       the per-move remap must carry that bend through the triangle. */
+    const lateM = flipAt('backflip', 2.022);
+    const lateLegs = K1.actionPose(back, 2.022);
+    check('Back Flip keeps the corrected leg bend through 2.022 s',
+      Math.abs(demo.lean() * 180 / Math.PI - 130) < 3 &&
+      Math.abs(atPart(lateM, 'head').low) < 0.01 &&
+      Math.abs(atPart(lateM, 'handL').low) < 0.01 &&
+      Math.abs(atPart(lateM, 'handR').low) < 0.01 &&
+      lateLegs.leftThigh < 100 && lateLegs.rightThigh > 150,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, legs '
+      + ['leftThigh', 'leftCalf', 'rightThigh', 'rightCalf'].map((n) => n + ':' + lateLegs[n]).join(' '));
+    /* Palms first: at 1.9 s the corrected knees are still the lowest point, so
+       the hands cannot be carrying yet. By 1.95 s they are, before the head
+       lands. Sampling earlier only described the inverse-leg geometry. */
+    const catchM = flipAt('backflip', 1.95);
     check('the palms carry the body before the head reaches the triangle',
       demo.lean() > 60 * Math.PI / 180 &&
       Math.abs(atPart(catchM, 'handL').low) < 0.01 &&
       Math.abs(atPart(catchM, 'handR').low) < 0.01 &&
-      atPart(catchM, 'head').low > 0.1,
+      atPart(catchM, 'head').low > 0.04,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, palms '
       + (atPart(catchM, 'handL').low * 1000).toFixed(0) + '/'
       + (atPart(catchM, 'handR').low * 1000).toFixed(0) + ' mm, head '
