@@ -1331,9 +1331,14 @@
       }
       /* Re-seat the height on the lowest flip-body part: a dialled pose that
          reaches shorter or further than the file's must not hang in the air
-         or sink into the floor. */
+         or sink into the floor. While the head-and-palm triangle is being
+         reached, the palms join that support - they catch the falling body
+         before the head lands instead of passing through the floor. */
+      const tri = flipTrack(act.data).tripod;
+      const palms = tri && act.t >= tri.from && act.t <= tri.to;
       composeWorld(0, pitch, s.px, 0);
-      const ty = -lowestFlipBody();
+      let ty = -lowestFlipBody();
+      if (palms) ty = -Math.min(-ty, soleLow('handL').y, soleLow('handR').y);
       return { pitch, tx: s.px, tz: 0, ty };
     }
     const ref = supportRef();
@@ -1401,7 +1406,10 @@
          the floor without moving the pelvis. Leaving them in the rigid body
          made a swinging hand pole-vault the whole robot into a second roll.
          Anything below the floor is hidden by the floor plane, so the price is
-         only that a forearm can pass under it during the tumble.
+         only that a forearm can pass under it during the tumble. The one
+         observed exception is the head-and-palms triangle: at `tripod` on the
+         clock the palms join the *seating* (not the rigid-body solve), so they
+         catch the body on the way down and stay with the head for a moment.
        - the model is about a metre tall where the K1 is 349 mm. Gravity is real
          9.81, not scaled to the model, because the measured keyframe clock owns
          the timing; the root only has to fall plausibly between those beats.
@@ -1424,8 +1432,8 @@
   function trackSpan(a) {
     return a.duration_ms / 1000 + (a.flip ? FLIP_SETTLE : 0);
   }
-  /* The parts that can carry the body on the floor. The arms are deliberately
-     absent; see above. */
+  /* The parts the free solve may put on the floor. The arms are deliberately
+     absent; the observed palm contact is a root-seating exception, see above. */
   const FLIP_BODY = [
     'pelvis', 'torso', 'head',
     'thighL', 'thighR', 'calfL', 'calfR', 'ankleL', 'ankleR', 'footL', 'footR'
@@ -1678,11 +1686,6 @@
       }
     }
 
-    st.yaw = yaw;
-    parts.forEach((p, i) => {
-      p.rot[0] = keep[i][0]; p.rot[1] = keep[i][1]; p.rot[2] = keep[i][2];
-    });
-
     /* Which way did the free solve actually turn? The name is the tie-breaker.
        The natural answer for every flip on the card is backwards; a front flip
        is the same track reflected in X, which is also a mirror of where the
@@ -1690,10 +1693,97 @@
     let ext = 0;
     for (let i = 0; i < n; i++) if (Math.abs(pitch[i]) > Math.abs(ext)) ext = pitch[i];
     const natural = ext < 0 ? -1 : 1;
-    return {
-      dt, n, pitch, px, py, dur, settle: FLIP_SETTLE,
-      sign: (action.flip < 0 ? -1 : 1) === natural ? 1 : -1
+    const sign = (action.flip < 0 ? -1 : 1) === natural ? 1 : -1;
+
+    /* The owner timed one beat of Back Flip: at 2.0 s the head and both
+       palms are on the floor together, a triangle that carries the body
+       before it rolls onto its back. The free solve has no arm contacts, so
+       at that second its palms are under the floor and its head is still
+       above it. Solve the root that levels those three points and blend the
+       approach into it as the palms land, then hold it until the free solve
+       has both palms back on the floor at the same angle. The roll after
+       that is still the free solve's own; this uses only the file's pose and
+       the observed second, not a single invented servo value. */
+    const worldPitch = (i) => sign * pitch[i];
+    const worldPx = (i) => sign * px[i];
+    /* How high the lowest palm is above the body's own lowest point, in the
+       root the file pose would get without the palms. */
+    const palmGap = (i) => {
+      composeWorld(0, worldPitch(i), worldPx(i), 0);
+      return Math.min(soleLow('handL').y, soleLow('handR').y) - lowestFlipBody();
     };
+    const levelGap = (p) => {
+      composeWorld(0, p, 0);
+      return soleLow('head').y - Math.min(soleLow('handL').y, soleLow('handR').y);
+    };
+    function tripodRoot(t, hint) {
+      K1.pose(byName, 0, 0, { joints: K1.actionPose(action, t), idle: false });
+      const span = 30 * Math.PI / 180, step = 0.5 * Math.PI / 180;
+      const roots = [];
+      let prevP = hint - span, prev = levelGap(prevP);
+      for (let p = prevP + step; p <= hint + span + 1e-9; p += step) {
+        const g = levelGap(p);
+        if (prev * g <= 0) {
+          let lo = prevP, hi = p, gl = prev;
+          for (let k = 0; k < 24; k++) {
+            const mid = (lo + hi) * 0.5, gm = levelGap(mid);
+            if (gl * gm <= 0) hi = mid; else { lo = mid; gl = gm; }
+          }
+          roots.push((lo + hi) * 0.5);
+        }
+        prev = g; prevP = p;
+      }
+      if (!roots.length) return null;
+      const p = roots.reduce((a, b) =>
+        Math.abs(b - hint) < Math.abs(a - hint) ? b : a);
+      composeWorld(0, p, 0);
+      const low = Math.min(soleLow('head').y, soleLow('handL').y, soleLow('handR').y);
+      return { pitch: p, ty: -low };
+    }
+
+    let tripod = null;
+    if (action.tripod > 0 && action.tripod < dur) {
+      const tc = action.tripod, ic = Math.round(tc / dt);
+      const root = tripodRoot(tc, worldPitch(ic));
+      if (root) {
+        /* The palms reach the floor before the head. From that crossing they
+           carry the body; the root then tips onto them over the last 150 ms. */
+        let iFrom = ic;
+        for (let i = 1; i < ic; i++) {
+          if (palmGap(i) < 0) { iFrom = i; break; }
+        }
+        const ia = Math.max(iFrom, Math.round((tc - 0.15) / dt));
+        const blendFrom = ia * dt, blendSpan = Math.max(dt, tc - blendFrom);
+        const pxC = worldPx(ic);
+        for (let i = ia; i <= ic; i++) {
+          const x = (i * dt - blendFrom) / blendSpan;
+          const u = x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+          pitch[i] = sign * ((1 - u) * worldPitch(i) + u * root.pitch);
+          px[i] = sign * ((1 - u) * worldPx(i) + u * pxC);
+          py[i] = (1 - u) * py[i] + u * root.ty;
+        }
+        /* Hold the three-point contact until the free solve has caught up,
+           then let the roll go back to being a free rigid body. */
+        let hint = root.pitch, iTo = ic;
+        for (let i = ic + 1; i < n; i++) {
+          const r = tripodRoot(i * dt, hint);
+          if (!r) break;
+          if (palmGap(i) >= -0.003 &&
+              Math.abs(r.pitch - worldPitch(i)) < 2 * Math.PI / 180) break;
+          hint = r.pitch;
+          pitch[i] = sign * r.pitch;
+          py[i] = r.ty;
+          iTo = i;
+        }
+        tripod = { from: iFrom * dt, to: iTo * dt };
+      }
+    }
+
+    st.yaw = yaw;
+    parts.forEach((p, i) => {
+      p.rot[0] = keep[i][0]; p.rot[1] = keep[i][1]; p.rot[2] = keep[i][2];
+    });
+    return { dt, n, pitch, px, py, dur, settle: FLIP_SETTLE, sign, tripod };
   }
 
   function flipTrack(action) {

@@ -23,7 +23,9 @@
    floor, so the display seats the pelvis instead of standing on a sole.
    `flip` is the same kind of display hint: a script stores servo angles,
    never a root spin, so +1 means roll backwards onto the back and -1
-   means roll forwards onto the front. No decoded frame is changed. */
+   means roll forwards onto the front. `tripod` is an observed beat -
+   the second at which the head and both palms are on the floor - not
+   a servo value either. No decoded frame is changed. */
 window.K1ACTIONS = {
  "chestup": {
   "name": "Chest Up",
@@ -544,6 +546,7 @@ window.K1ACTIONS = {
   "note": "",
   "timing": "trace",
   "flip": 1,
+  "tripod": 2.0,
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},

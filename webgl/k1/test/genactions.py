@@ -87,6 +87,14 @@ FLIP_MOVES = {
     "frontflip": -1,
 }
 
+# The one beat of a flip the owner could time by eye: at this second the
+# head and both palms form a triangle on the floor. Like `flip`, it is a
+# display hint from an observation, not a value from the script. The display
+# solves the root that makes the three points touch; no servo byte changes.
+TRIPOD_MOVES = {
+    "backflip": 2.0,
+}
+
 
 def load_k1(root: Path):
     """Import phone.py, shdecode.py and the spec from a k1 checkout."""
@@ -262,6 +270,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["timing"] = "table"
             if key in FLIP_MOVES:
                 entry["flip"] = FLIP_MOVES[key]
+            if key in TRIPOD_MOVES:
+                entry["tripod"] = TRIPOD_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:
@@ -306,7 +316,9 @@ def render(actions: dict, order: list[str]) -> str:
         "   floor, so the display seats the pelvis instead of standing on a sole.",
         "   `flip` is the same kind of display hint: a script stores servo angles,",
         "   never a root spin, so +1 means roll backwards onto the back and -1",
-        "   means roll forwards onto the front. No decoded frame is changed. */",
+        "   means roll forwards onto the front. `tripod` is an observed beat -",
+        "   the second at which the head and both palms are on the floor - not",
+        "   a servo value either. No decoded frame is changed. */",
         "window.K1ACTIONS = {",
     ]
     for n, key in enumerate(order):

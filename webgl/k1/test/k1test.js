@@ -1063,6 +1063,38 @@ world(J());
       (bp.peak * 180 / Math.PI).toFixed(1) + 'deg at ' + bp.peakT.toFixed(2) + 's');
     check('no body part of Back Flip goes through the floor, keyframes or settle',
       bp.bodyLow >= -0.002, (bp.bodyLow * 1000).toFixed(1) + ' mm (' + bp.bodyName + ')');
+
+    /* The first part of Back Flip ends in the beat the owner timed at 2.0 s:
+       the head and both palms make a triangle on the floor, soles in the air.
+       The palms catch the falling body first, then the head comes down to
+       them - the free solve alone ran both palms under the floor. */
+    const triM = flipAt('backflip', bfA.tripod);
+    check('Back Flip puts the head and both palms on the floor at 2.0 s',
+      bfA.tripod === 2 && demo.lean() > 100 * Math.PI / 180 &&
+      Math.abs(atPart(triM, 'head').low) < 0.01 &&
+      Math.abs(atPart(triM, 'handL').low) < 0.01 &&
+      Math.abs(atPart(triM, 'handR').low) < 0.01 &&
+      Math.min(atPart(triM, 'footL').low, atPart(triM, 'footR').low) > 0.3,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(triM, 'head').low * 1000).toFixed(0) + ' mm, palms '
+      + (atPart(triM, 'handL').low * 1000).toFixed(0) + '/'
+      + (atPart(triM, 'handR').low * 1000).toFixed(0) + ' mm');
+    const catchM = flipAt('backflip', 1.9);
+    check('the palms carry the body before the head reaches the triangle',
+      demo.lean() > 60 * Math.PI / 180 &&
+      Math.abs(atPart(catchM, 'handL').low) < 0.01 &&
+      Math.abs(atPart(catchM, 'handR').low) < 0.01 &&
+      atPart(catchM, 'head').low > 0.1,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, palms '
+      + (atPart(catchM, 'handL').low * 1000).toFixed(0) + '/'
+      + (atPart(catchM, 'handR').low * 1000).toFixed(0) + ' mm, head '
+      + (atPart(catchM, 'head').low * 1000).toFixed(0) + ' mm');
+    const triWin = track.tripod;
+    check('the triangle is a bounded beat, then the free roll takes over',
+      triWin && triWin.from < bfA.tripod && bfA.tripod < triWin.to &&
+      triWin.to < bfA.frames[3].t && bp.peakT > triWin.to,
+      triWin ? triWin.from.toFixed(2) + '..' + triWin.to.toFixed(2) + 's' : 'no window');
+
     const bend = flipAt('backflip', bfA.frames[5].t);
     const bendM = demo.measure();
     check('Back Flip comes to rest on its back after the roll, head clear',
