@@ -551,7 +551,7 @@ window.K1ACTIONS = {
   "flip": 1,
   "tripod": 2.0,
   "tripodUntil": 2.95,
-  "legGain": {"from": 0, "full": 1.852, "hold": 2.19, "to": 2.4, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}},
+  "legGain": {"from": 0, "full": 1.852, "keys": [{"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}}]},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},

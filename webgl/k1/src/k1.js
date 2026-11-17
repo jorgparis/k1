@@ -231,18 +231,31 @@
   /* A stunt can ask its legs to travel with a different sign and gain from
      the global table - Back Flip's own bytes, read with the shared thigh/calf
      direction, folded the knees the opposite way from the robot. `legGain` on
-     that action is measured from the owner's dialled pose; it applies only to
-     the three leg pitch joints, through the wind-up and the head-and-palms
-     beat, then blends away before the roll. `file` skips it: the flip solve
-     must still see the shape the bytes say. */
+     that action is fitted from the owner's dialled poses: one bend for the
+     wind-up and head-and-palms beat, another for the stretched legs of the
+     upside-down beat, then back to the file's own shape for the roll. `keys`
+     interpolates those gains in time; the older flat form is still accepted.
+     Only the three leg pitch joints are affected, and `file` skips all of it:
+     the flip solve must still see the shape the bytes say. */
   function legGain(action, name, t) {
     const g = action && action.legGain;
     if (!g || !/^(left|right)(Thigh|Calf|Ankle)$/.test(name)) return 1;
     const base = name.replace(/^(left|right)/, '').toLowerCase();
-    const w = t <= g.full ? 1 : t >= g.to ? 0 :
-      (g.hold && t <= g.hold) ? 1 :
-      (g.to - t) / (g.to - (g.hold || g.full));
-    return 1 + (g.gains[base] - 1) * w;
+    if (!g.keys) {
+      const w = t <= g.full ? 1 : t >= g.to ? 0 :
+        (g.hold && t <= g.hold) ? 1 :
+        (g.to - t) / (g.to - (g.hold || g.full));
+      return 1 + (g.gains[base] - 1) * w;
+    }
+    const ks = g.keys;
+    if (t <= ks[0].t) return ks[0].gains[base];
+    for (let i = 1; i < ks.length; i++) {
+      if (t <= ks[i].t) {
+        const a = ks[i - 1], b = ks[i], u = (t - a.t) / (b.t - a.t);
+        return a.gains[base] + (b.gains[base] - a.gains[base]) * u;
+      }
+    }
+    return ks[ks.length - 1].gains[base];
   }
 
   /* One decoded keyframe -> raw counts. `file` asks for the unmodified bytes. */

@@ -105,23 +105,30 @@ TRIPOD_UNTIL = {
 }
 
 # Back Flip's legs are decoded with the one global direction/gain table, but
-# the owner's hand-dialled mark at 1.852 s (k1-record/1, "compare this pose -
-# it is the real one") shows this stunt's magnitudes need a different mapping:
-# the thigh travels the other way and the calf travels further. The three
-# gains below are fitted from that measured pose against this file's own
-# magnitudes at the same second; they are a display hint for this move only,
-# not new servo bytes. The mapping is fully on by `full`, then blends back to
-# the file's pose by `to` so the free flip solve still owns the roll. `hold`
-# keeps the measured bend through the owner's 2.022 s beat - the decoded pose
-# snaps the thighs back the other way just as the head lands, which the robot
-# does not do - then blends it away before the roll's next keyframe.
+# the owner's hand-dialled marks show this stunt's magnitudes need a different
+# mapping. At 1.852 s ("compare this pose - it is the real one") the thigh
+# travels the other way and the calf travels further: fitted gains of
+# thigh x-0.61, calf x1.39, ankle x0.79. That bend has to survive the 2.022 s
+# head-and-palms beat, where the decoded pose snaps the thighs back the other
+# way. Then the owner marked the legs stretched at about 2.8 s, for the
+# momentum of the flip. There is no near-neutral leg frame in the .sh at that
+# second (only the neutral first and last records are all zero), so a second
+# gain set is fitted from that dialled pose instead: thigh x-0.18, calf x0.05,
+# ankle x0.75, giving 112/63/114 and 134/187/139 against the measured
+# 112/66/113 and 135/189/138. Both are display hints for this move only, not
+# new servo bytes. `keys` interpolates the two measured poses around the held
+# triangle and blends back to the file's own shape for the roll.
 LEG_GAIN_MOVES = {
     "backflip": {
         "from": 0,
         "full": 1.852,
-        "hold": 2.19,
-        "to": 2.4,
-        "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79},
+        "keys": [
+            {"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}},
+            {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}},
+            {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}},
+            {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}},
+            {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}},
+        ],
     },
 }
 

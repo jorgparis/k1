@@ -1158,6 +1158,11 @@ world(J());
        page clock is approximate). The free solve had lifted the head 180 mm
        by 2.856 s; the held triangle must carry the body through that beat. */
     const upM = flipAt('backflip', 2.856);
+    const upLegs = K1.actionPose(back, 2.856);
+    const stretchLegs = {
+      leftThigh: 112, leftCalf: 66, leftAnkle: 113,
+      rightThigh: 135, rightCalf: 189, rightAnkle: 138
+    };
     check('Back Flip holds the head-and-arms triangle at 2.856 s',
       demo.lean() > 130 * Math.PI / 180 &&
       Math.abs(atPart(upM, 'head').low) < 0.01 &&
@@ -1170,6 +1175,15 @@ world(J());
       + (atPart(upM, 'handR').low * 1000).toFixed(0) + ' mm, soles '
       + (atPart(upM, 'footL').low * 1000).toFixed(0) + '/'
       + (atPart(upM, 'footR').low * 1000).toFixed(0) + ' mm');
+    /* The stretched legs are the point of the beat: they build the momentum
+       for the flip. The .sh has no near-neutral leg frame at this second (its
+       only all-zero leg records are the neutral start and end), so the second
+       gain set is fitted from the owner's dialled pose. Plain playback must
+       reach it without any slider being touched. */
+    check("Back Flip's legs are stretched at 2.856 s without dialling",
+      Object.keys(stretchLegs).every((n) => Math.abs(upLegs[n] - stretchLegs[n]) <= 3) &&
+      K1.actionPose(back, 2.856, true).leftThigh === 222,
+      ['leftThigh', 'leftCalf', 'rightThigh', 'rightCalf'].map((n) => n + ':' + upLegs[n]).join(' '));
     /* Dialling the stretched legs the owner drew at that mark used to make
        the leg-chain lean solve stand the robot up: head 736 mm, soles on the
        floor. Past the wind-up the head and arms own the root, not the legs. */
