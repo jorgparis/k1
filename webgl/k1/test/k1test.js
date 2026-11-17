@@ -1126,12 +1126,15 @@ world(J());
 
     /* A hand-dialled pose during a flip is no longer the shape the free track
        was solved from: the legs can reach further or shorter than the file's
-       at that second. The track's lean and place must survive, but the height
-       has to follow the pose on screen - otherwise a shortened leg leaves the
-       whole robot hanging in the air (a mark taken this way showed the feet
-       75 mm up). */
+       at that second. The track's place must survive, but the height has to
+       follow the pose on screen - otherwise a shortened leg leaves the whole
+       robot hanging in the air (a mark taken this way showed the feet 75 mm
+       up). The lean has to follow the legs too: a crouch dialled to match a
+       robot still winding up must not be frozen standing, and a toppled pose
+       must not be held nearly vertical. */
     flipAt('backflip', 1.161);
     const fileLow = Math.min(...demo.measure().map((p) => p.low));
+    const fileLean = demo.lean() * 180 / Math.PI;
     demo.st.target.leftCalf = K1.clampRaw('leftCalf', demo.st.target.leftCalf + 60);
     demo.st.target.rightCalf = K1.clampRaw('rightCalf', demo.st.target.rightCalf + 60);
     demo.st.joints = Object.assign({}, demo.st.target);
@@ -1140,10 +1143,14 @@ world(J());
     const dialLow = Math.min(...dialM
       .filter((p) => body.indexOf(p.name) >= 0)
       .map((p) => p.low));
+    const dialLean = demo.lean() * 180 / Math.PI;
     check('a leg dialled during a frozen flip is re-seated on the floor, not left hanging',
       fileLow < 0.01 && Math.abs(dialLow) < 0.003,
       'file ' + (fileLow * 1000).toFixed(0) + ' mm, dialled '
       + (dialLow * 1000).toFixed(0) + ' mm');
+    check('a leg dialled during a frozen flip leans the way its own leg chain says',
+      fileLean < 0 && dialLean > 10,
+      'file ' + fileLean.toFixed(1) + 'deg, dialled ' + dialLean.toFixed(1) + 'deg');
 
     /* The settle is part of the display, not of the measured file. */
     check('the flip track is deterministic: a seek is the same however it is reached',
@@ -1273,7 +1280,9 @@ world(J());
 
   /* Dialling the sliders is how a mark records a pose the robot was seen in.
      It freezes the take, so the clock - and the flip's root, which is what the
-     lean means - has to survive it instead of standing the model up. */
+     lean means - has to survive a head or arm edit instead of standing the
+     model up. A leg edit is different: the legs decide the support, so the
+     lean is re-solved from them (checked below). */
   demo.selectJoint(16);
   const j = demo.JOINTS[16];
   const room = demo.st.target.head + 40 <= j.max ? 40 : -40;

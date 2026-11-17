@@ -191,9 +191,11 @@ robot has already finished, drag the bar under the move list to hold any second
 and mark from there — it is a scrubber, and on a flip it reaches the settled
 pose. If you dial the sliders to the robot's pose first, the mark stores that
 pose as well and counts how many joints differ from the file; a joint edit
-freezes the take instead of ending it, so the clock and the flip's lean stay
-while the sliders move, and a dialled pose is re-seated vertically on the
-lowest body part so it neither hangs above the floor nor sinks into it. A mark
+freezes the take instead of ending it, so the clock survives, and a head or
+arm edit leaves the take's lean alone. Move a leg and the lean is re-solved
+from the leg chain, because the legs are what decide which way the body tips.
+Either way the dialled pose is re-seated vertically on the lowest body part so
+it neither hangs above the floor nor sinks into it. A mark
 with no pose of its own is just the model's pose
 — it is not evidence that the robot agreed.
 
@@ -342,9 +344,11 @@ Four things the bytes do not carry, and where they are decided instead:
   floor. `FLIP_SETTLE = 1.5 s` then holds that standing pose. The readout and
   deep links still count only the measured file clock, and moving a slider only
   freezes the take and moves that one joint. A pose dialled during a flip is
-  re-seated vertically on the lowest flip-body part: the free track was solved
+  re-seated vertically on the lowest flip-body part, and if the dialled joints
+  are legs its lean is re-solved from the leg chain: the free track was solved
   for the file's own limbs, so a shortened leg would otherwise leave the robot
-  hanging in the air. Back Flip leans back, puts its head
+  hanging in the air, and a crouch dialled to match a robot still winding up
+  would be frozen standing instead of leaning back. Back Flip leans back, puts its head
   on the floor at about 2.05 s, rolls over it and lies on its back from about
   2.6 s to 5.7 s (about 74° of pitch, head clear, feet raised by the bent
   knees), then stands up as the last keyframe arrives at 6.47 s. Front Flip is
@@ -426,15 +430,23 @@ arms out, not as the tight tuck the bytes describe. The note on the mark is the
 owner's; the model's own measurement at that page second is not evidence of the
 robot's pose.
 
-What the display does at that second is the useful check. The file's limbs are
-already most of the way into the topple there - the record's `model` field is
-the file's pose, 80 % of the way from the 1.078 s lead-in to the 1.687 s bend -
-but the solved root is still nearly upright at about 5°. The free solve only
-reaches 101.7° at about 1.97 s, and by then the feet are about 0.5 m up, where
-the mark has both soles on the floor (4 mm and 0 mm) and the head still 177 mm
-clear. So the limbs are close to the owner's observation, but the root is not:
-the robot pivots over planted soles into its head, while the model is already
-in the air by the time it reaches that lean.
+What the display does at that second depends on whose pose it is showing.
+With the file's own limbs the root is still nearly upright at 1.565 s (4.9°);
+the free solve only reaches 101.7° at about 1.97 s, and by then the feet are
+about 0.5 m up. The mark's `model` field is the file's pose 80 % of the way
+from the 1.078 s lead-in to the 1.687 s bend, so that is what the file alone
+says there. Replaying the mark's dialled pose at 1.565 s instead gives 109.8°
+backward, the lowest sole on the floor (the other 14 mm up) and the head
+135 mm clear - against the mark's 101.7° and 177 mm - because a dialled leg
+chain is what tips the body, not the free track solved for the file's limbs.
+
+A second mark records `t = 1.739 s`, the note "not bending backwards", and
+`lean = -1.5°` with nine joints dialled. Its legs are a crouch, and the old
+display kept the free track's nearly-upright root for it, so the body sat on
+the folded leg instead of leaning back. Re-solved from its own leg chain it now
+leans 67.5° backward with the feet planted and the head 427 mm up (the mark
+measured 430 mm). That is the rule now: a head or arm edit freezes the take and
+keeps its root; a leg edit re-solves the lean from the legs.
 
 Two limits are worth stating plainly:
 
@@ -459,7 +471,7 @@ Ten harnesses run the real source under Node. None of them need a GPU.
 
 | Harness | What it proves |
 | --- | --- |
-| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take without standing a flip up), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor instead of left hanging, and a keystroke typed into a text field no longer fires the shortcuts |
+| `k1test.js` | 17 unique indices, travel contains neutral, soles on the floor, one joint moves only its subtree, clamping, mirror-mount counts, every preset does what its label says, the panel matches the table, the move browser lists all 90 moves with 86 playable and four disabled, and the decoded Push Ups: 18 keyframes (the file's 12 with the marked pump block played 3×), samples all inside travel, starts and ends neutral, plays for the measured 9.625 s, cancels on manual input, bends the right joints, keeps the palms level with the soles between keyframes, never goes through the floor, dips the pelvis three times, once per pump, keeps Take A Seat upright with its pelvis on the floor and its feet forward, checks that `Open Legs`/`Celebrate` widen the stance rather than crossing the feet, and that Celebrate swings the pelvis over both planted soles (no foot lift, at the keyframes or between them) while Open Legs keeps the pelvis centred, and the flip solve: Back Flip leans back, puts its head on the floor, lies on its back and stands up, Front Flip mirrors it forwards and tips short of its head, Keep Rolling Backward rolls its head onto the floor and also stands up, no body part sinks through the floor, and the track is cached, seek-deterministic, held through the settle and shown from the profile camera, and the manual recorder: a mark keeps the action clock through a slider change (which freezes the take and keeps its clock), stores the file's pose and the model's head height, adds a pose of its own only when the sliders moved, survives a JSON round trip, seeks back to its second, the progress bar holds any second and keeps a playing take playing, the pose dialled by hand survives the take that overwrites it and comes back on its own second, a leg dialled during a frozen flip is re-seated on the floor and leans the way its own leg chain says instead of keeping the file's root, and a keystroke typed into a text field no longer fires the shortcuts |
 | `smoke.js` | both builds load, run 240 frames, and issue real draw calls |
 | `audiofail.js` | a broken `AudioContext` can never stop the render loop |
 | `glslcheck.js` | the VS/FS pairs agree on varyings; nothing undeclared; no scalar/vector assignment mismatch (the sky once declared `float` from `floor(vec2(...))`) |

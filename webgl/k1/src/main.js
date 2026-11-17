@@ -1243,13 +1243,15 @@
     return soleRef;
   }
 
-  /* Whether the servos on screen are still the file's pose at the current
-     second. A slider, nudge, preset or paste makes them differ, and on a flip
-     that difference changes how far the legs actually reach. */
-  function dialledPose(action) {
+  /* The leg joints are what decide which way the pelvis tips: a hand-dialled
+     thigh or calf changes the support geometry, while the arms and head do
+     not. Used to tell a legs-dialled flip pose from a merely touched one. */
+  const LEG_JOINTS = ['leftThigh', 'leftCalf', 'leftAnkle',
+    'rightThigh', 'rightCalf', 'rightAnkle'];
+  function legsDialled(action) {
     const want = K1.actionPose(action, act.t);
-    for (const j of JOINTS) {
-      if (Math.abs(st.joints[j.name] - want[j.name]) > 0.01) return true;
+    for (const n of LEG_JOINTS) {
+      if (Math.abs(st.joints[n] - want[n]) > 0.01) return true;
     }
     return false;
   }
@@ -1286,7 +1288,10 @@
        flips (`flip` on the action) - a flipping body is not standing on
          anything, so none of the solves above apply. The root is a free
          rigid-body track computed once for the whole take; see the flip block
-         below. It overrides the other three for that action.
+         below. It overrides the other three for that action, except that a
+         pose dialled by hand on the legs re-solves the lean from those legs,
+         because they are what decide which way the body tips; the track then
+         only supplies where it stands.
 
      The same solve has a sideways half. The pelvis has no roll servo and the
      legs have no lateral joint except hip abduction, so when the two hip
@@ -1311,18 +1316,25 @@
        pose the file plays. */
     if (act.data && act.data.flip) {
       const s = flipSample(flipTrack(act.data), act.t);
-      let ty = s.py - D.hipH;
-      /* A joint moved by hand is no longer the pose the track was solved from:
-         the legs can reach further or shorter than the file's at this second,
-         so the solved pelvis height leaves a dialled pose hanging above the
-         floor (or pressed into it). Keep the track's lean and where it stands,
-         but re-seat the height on the lowest flip-body part. The file's own
-         pose is untouched - its track must still leave the floor mid-roll. */
-      if (dialledPose(act.data)) {
-        composeWorld(ty, s.pitch, s.tx, s.tz);
-        ty -= lowestFlipBody();
+      let pitch = s.pitch;
+      /* A pose dialled by hand is no longer the shape the track was solved
+         from. If the legs were moved, the pose itself says which way the body
+         tips - a crouch dialled to match a robot still winding up must not be
+         stood upright, and a toppled pose must not be frozen nearly vertical.
+         Keep the track's horizontal place and re-solve the lean from the
+         dialled leg chain. The file's own pose keeps the free track, so it can
+         still leave the floor mid-roll. */
+      if (legsDialled(act.data)) {
+        composeWorld(0, 0, 0);
+        const side = soleLow('footL').y <= soleLow('footR').y ? 'L' : 'R';
+        pitch = clamp(-K1.legPitch(byName, side), -2.7, 2.7);
       }
-      return { pitch: s.pitch, tx: s.px, tz: 0, ty };
+      /* Re-seat the height on the lowest flip-body part: a dialled pose that
+         reaches shorter or further than the file's must not hang in the air
+         or sink into the floor. */
+      composeWorld(0, pitch, s.px, 0);
+      const ty = -lowestFlipBody();
+      return { pitch, tx: s.px, tz: 0, ty };
     }
     const ref = supportRef();
     composeWorld(0, 0, 0);
