@@ -5276,7 +5276,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      `K1.actionPose` samples the keyframes. It writes target *and* joints, so
      the model follows the file's own frames instead of easing through them -
      the easing would round off exactly the sharp beats the file encodes. */
-  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0 };
+  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null };
 
   /* The manual recorder. The BLE protocol has no telemetry channel, so this
      page cannot learn what the real robot did by itself; a person watching the
@@ -5293,7 +5293,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      the last hand-made pose so it can be put back on screen, at the same second,
      and marked after the fact. Only joint edits fill it - a preset or a reset is
      the demo's own pose, not an observation of the robot. */
-  const hold = { pose: null, key: null, t: 0 };
+  const hold = { pose: null, key: null, t: 0, rootT: null };
 
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
@@ -5305,6 +5305,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     act.name = a.name;
     act.data = a;
     act.t = 0;
+    act.rootT = null;
     act.playing = true;
     rec.at = { key, t: 0 };
     st.scene = 'ACTION: ' + a.name.toUpperCase();
@@ -5333,6 +5334,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
      stopped, because that is where the servos would be. */
   function stopAction() {
     act.playing = false;
+    act.rootT = null;
     act.data = null;
     act.key = null;
     act.name = null;
@@ -5786,6 +5788,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     hold.pose = p;
     hold.key = rec.at.key;
     hold.t = rec.at.t;
+    hold.rootT = act.rootT;
     syncHold();
   }
 
@@ -5802,6 +5805,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
        screen once, and watching the servos travel back to it would blur which
        second the mark is about. */
     st.joints = p;
+    act.rootT = hold.rootT;
     st.scene = 'RECALLED POSE';
     /* The mark that should have been made then can still be made: the clock
        goes back to the second the pose was dialled against. */
@@ -5978,6 +5982,7 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     if (act.key !== key || !act.data) playAction(key);
     act.playing = wasPlaying;
     act.t = clamp(t, 0, lim);
+    act.rootT = null;
     rec.at = { key, t: act.t };
     const p = K1.actionPose(a, act.t);
     st.target = p;
@@ -5990,6 +5995,24 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
 
   /* The way back from a note to the picture: put the take on that second with
      the file's own pose, so a guess about a beat can be checked at once. */
+  /* A mark's page clock is only approximate, and a build with different move
+     timing can have put another file frame behind that second. The `model`
+     block is the file pose whose lean and part heights were recorded, so find
+     the file time that reproduces it. That drives the flip's root while the
+     mark's own second stays on the clock. */
+  function modelTime(a, model) {
+    if (!a || !a.frames || !model) return null;
+    const keys = Object.keys(model), dur = a.duration_ms / 1000;
+    let bestT = 0, bestD = Infinity;
+    for (let t = 0; t <= dur + 1e-9; t += 1 / 240) {
+      const p = K1.actionPose(a, Math.min(t, dur));
+      let d = 0;
+      for (const k of keys) d += Math.abs(p[k] - model[k]);
+      if (d < bestD) { bestD = d; bestT = Math.min(t, dur); }
+    }
+    return bestT;
+  }
+
   function recSeek(m) {
     if (!m || !m.action) return false;
     if (!seekAction(m.action, m.t)) return false;
@@ -6006,6 +6029,9 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       }
       st.target = p;
       st.joints = p;
+      if (act.data && act.data.flip && m.model) {
+        act.rootT = modelTime(act.data, m.model);
+      }
       saveHold();
     }
     syncPanel();
@@ -6373,7 +6399,8 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
        sole: it is the free rigid-body track below, measured once from the same
        pose the file plays. */
     if (act.data && act.data.flip) {
-      const s = flipSample(flipTrack(act.data), act.t);
+      const rt = act.rootT != null ? act.rootT : act.t;
+      const s = flipSample(flipTrack(act.data), rt);
       let pitch = s.pitch;
       /* A pose dialled by hand is no longer the shape the track was solved
          from. If the legs were moved, the pose itself says which way the body
@@ -6388,9 +6415,9 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
          body, straight legs must not stand it back up (the owner dialled
          stretched legs at the upside-down beat and saw exactly that). */
       const lg = act.data.legGain;
-      if (act.t < (act.data.tripod || Infinity) &&
+      if (rt < (act.data.tripod || Infinity) &&
           (legsDialled(act.data) ||
-           (lg && act.t >= lg.from && act.t <= lg.full + 1e-9))) {
+           (lg && rt >= lg.from && rt <= lg.full + 1e-9))) {
         composeWorld(0, 0, 0);
         const side = soleLow('footL').y <= soleLow('footR').y ? 'L' : 'R';
         pitch = clamp(-K1.legPitch(byName, side), -2.7, 2.7);
@@ -6404,9 +6431,9 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
       /* Through Back Flip's roll the dialled hands are the lowest point; seat
          the body on them instead of rotating the arms, so every joint the owner
          dialled stays exactly as set. Other flips keep the original window. */
-      const palms = tri && act.t >= tri.from &&
-        (act.t <= tri.to || (act.data.armClear &&
-         act.t <= act.data.duration_ms / 1000));
+      const palms = tri && rt >= tri.from &&
+        (rt <= tri.to || (act.data.armClear &&
+         rt <= act.data.duration_ms / 1000));
       composeWorld(0, pitch, s.px, 0);
       let ty = -lowestFlipBody();
       if (palms) ty = -Math.min(-ty, soleLow('handL').y, soleLow('handR').y);

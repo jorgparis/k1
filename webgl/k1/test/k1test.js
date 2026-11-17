@@ -1283,25 +1283,57 @@ world(J());
       'worst ' + dWorst.toFixed(0) + ' mm at ' + dWorstT.toFixed(2)
       + 's, joints ' + (dExact ? 'exact' : 'changed'));
 
-    /* The owner's record says t=3.461 but carries the 141deg pose; the record
-       note already calls t approximate. Seeking the mark must restore the
-       exact dialled joints and plant the hands wherever the clock says. */
-    opts.els.recPaste.value = JSON.stringify({
+    /* The owner's actual record: its page clock says 3.461 s but its `model`
+       block is the file's 2.958 s pose (the clock is approximate). Seeking the
+       mark used to re-solve the root from 3.461 s and show 79deg, nowhere near
+       the recorded 141.1deg head-down shape. The mark must restore that shape
+       while keeping its own clock and every dialled joint. */
+    const ownerMark = {
       format: 'k1-record/1',
-      marks: [{ n: 1, action: 'backflip', t: 3.461, note: 'dialled pose',
-        lean: 141.1, pose: dialled }]
-    });
+      marks: [{
+        n: 1, action: 'backflip', name: 'Back Flip', t: 3.461,
+        note: "I don't see this position in the correction", diff: 10,
+        lean: 141.1,
+        low: { pelvis: 290, torso: 51, head: 0, handL: -90, handR: -91 },
+        pelvis: [-0.226, 0.380, 0],
+        model: {
+          leftThigh: 116, leftCalf: 65, leftAnkle: 112,
+          rightThigh: 131, rightCalf: 185, rightAnkle: 140,
+          leftShoulder: 102, rightShoulder: 146,
+          leftHip: 123, leftFoot: 125, rightHip: 129, rightFoot: 115,
+          leftArm: 59, leftHand: 115, rightArm: 198, rightHand: 126, head: 122
+        },
+        pose: dialled
+      }]
+    };
+    opts.els.recPaste.value = JSON.stringify(ownerMark);
     demo.record.paste();
     demo.record.seek(0);
     tick(1);
     const markM = demo.measure();
     const markHands = Math.min(atPart(markM, 'handL').low, atPart(markM, 'handR').low);
-    check("a pasted mark keeps the dialled joints exact and its hands on the floor",
+    check("the owner's 3.461 s mark shows its recorded 141deg pose, not the 79deg file frame",
       jointsExact() && Math.abs(demo.record.clock().t - 3.461) < 1e-9 &&
-      markHands > -0.005 && markHands < 0.01,
-      't=' + demo.record.clock().t.toFixed(3) + 's, hands '
+      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
+      markHands > -0.005 && markHands < 0.01 &&
+      atPart(markM, 'head').low > 0.05 &&
+      Math.abs(atPart(markM, 'pelvis').x - (-0.226)) < 0.01 &&
+      Math.abs(demo.act.rootT - 2.958) < 0.05,
+      'clock ' + demo.record.clock().t.toFixed(3) + 's, root file time '
+      + demo.act.rootT.toFixed(3) + 's, lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
+      + (atPart(markM, 'head').low * 1000).toFixed(0) + ' mm, hands '
       + (markHands * 1000).toFixed(0) + ' mm, joints '
       + (jointsExact() ? 'exact' : 'changed'));
+    demo.record.recall();
+    tick(1);
+    check("recalling the dialled pose keeps the mark's recorded root",
+      demo.act.rootT != null &&
+      Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 && jointsExact(),
+      'root file time ' + demo.act.rootT + 's, lean '
+      + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');
+    demo.playAction('backflip');
+    check("playing a take drops the mark's recorded root", demo.act.rootT === null);
 
     const bend = flipAt('backflip', bfA.frames[5].t);
     const bendM = demo.measure();
