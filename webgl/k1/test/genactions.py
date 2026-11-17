@@ -140,6 +140,8 @@ LEG_GAIN_MOVES = {
 MARK_POSE_MOVES = {
     "backflip": {
         "t": 3.461,
+        "from": 3.35,
+        "to": 3.55,
         "pose": {
             "leftThigh": 229, "leftCalf": 10, "leftAnkle": 143,
             "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109,

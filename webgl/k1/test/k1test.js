@@ -1294,9 +1294,17 @@ world(J());
       Math.min(atPart(scrubM, 'handL').low, atPart(scrubM, 'handR').low) > -0.005,
       'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, joints '
       + (jointsExact() ? 'exact' : 'changed'));
-    demo.seek('backflip', 3.3);
+    demo.seek('backflip', 3.404);
     tick(1);
-    check('the mark override is scoped to its second, not the whole roll',
+    const scrubM2 = demo.measure();
+    check("scrubbing to 3.404 (the owner's clock) also shows the mark's values",
+      jointsExact() && Math.abs(demo.lean() * 180 / Math.PI - 141.1) < 1 &&
+      Math.min(atPart(scrubM2, 'handL').low, atPart(scrubM2, 'handR').low) > -0.005,
+      'lean ' + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, joints '
+      + (jointsExact() ? 'exact' : 'changed'));
+    demo.seek('backflip', 3.2);
+    tick(1);
+    check('the mark override is scoped to its beat window, not the whole roll',
       demo.st.joints.leftArm !== 33 && Math.abs(demo.lean() * 180 / Math.PI - 141.1) > 5,
       'leftArm ' + demo.st.joints.leftArm + ', lean '
       + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg');

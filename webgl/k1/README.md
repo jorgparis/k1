@@ -201,9 +201,12 @@ carries the file pose that produced its recorded lean: because the page clock
 is approximate, opening the mark solves the root from the file time whose pose
 matches that stored block, while the note keeps the second you pressed. The
 owner's 3.461 s observation is additionally filed as a `markPose` hint on Back
-Flip, so that second shows the marked pose even on a fresh deep link, without
-pasting the record first. A mark
-with no pose of its own is just the model's pose
+Flip, covering the 3.35–3.55 s band the owner's approximate page clock has
+actually read for that beat (3.404 s and 3.461 s), so scrubbing or deep-linking
+anywhere in it shows the marked pose and 141° root even on a fresh load, without
+pasting the record first. That is why a mark made there with no slider change
+still records the dialled pose and lean rather than the file's later 79° frame.
+A mark with no pose of its own is just the model's pose
 — it is not evidence that the robot agreed.
 
 ## Layout
@@ -221,7 +224,7 @@ than editing the bundle.
 | `src/gl.js` | program / mesh / FBO / canvas-texture helpers |
 | `src/shaders.js` | sky, grid floor, planar shadow, scene, post |
 | `src/k1.js` | the `JOINTS` table, 19-part rig, neutral pose, clamping, pose, `.sh` direction + sampler |
-| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat and Back Flip's dialled `markPose` at 3.461 s; `window.K1ACTIONS` + `K1ACTION_LIST` |
+| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat and Back Flip's dialled `markPose` over the 3.35–3.55 s page-clock band; `window.K1ACTIONS` + `K1ACTION_LIST` |
 | `src/hud.js` | 320×200 1-bit HUD |
 | `src/music.js` | chiptune sequencer |
 | `src/main.js` | GL setup, render passes, camera, servo panel, presets, action player, recorder, input |
@@ -545,10 +548,11 @@ Two limits are worth stating plainly:
   seconds as approximate until the same take is filmed and counted. The
   3.461 s mark is exactly this case: its `model` block is the file's 2.958 s
   pose, so the file at 3.461 s is a later 79° frame. The observation is filed
-  as a generated `markPose` hint on Back Flip: scrubbing or deep-linking to
-  that exact second shows the dialled joints and the recorded 141° root, with
-  the hands seated on the floor and the head lifted ~90 mm. Neighbouring
-  seconds still show the file, and playing the take drops the override.
+  as a generated `markPose` hint on Back Flip: scrubbing or deep-linking
+  anywhere in the 3.35–3.55 s band shows the dialled joints and the recorded
+  141° root, with the hands seated on the floor and the head lifted ~90 mm.
+  Times outside that band still show the file, and playing the take drops the
+  override.
 * the leg remap is fitted from two hand-dialled marks, not from a sweep of the
   robot's travel. It makes Back Flip's wind-up and stretched-leg beat reach the
   poses the owner measured, but other magnitudes in the same stunt are inferred

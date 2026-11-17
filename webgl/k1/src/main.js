@@ -964,7 +964,13 @@
      the owner's mark makes this work even before a record is pasted. */
   function markedPoseAt(key, t) {
     const hint = (actions()[key] || {}).markPose;
-    return hint && Math.abs(hint.t - t) <= 1e-3 ? hint : null;
+    if (!hint) return null;
+    /* The page clock is approximate: the same beat has been marked at 3.404
+       and 3.461. Cover the whole band so the dialled pose shows wherever the
+       owner's clock reads when they mark it, not just at one exact second. */
+    const from = hint.from != null ? hint.from : hint.t;
+    const to = hint.to != null ? hint.to : hint.t;
+    return t + 1e-9 >= from && t - 1e-9 <= to ? hint : null;
   }
   function applyMarkAt(key, t) {
     const m = markedPoseAt(key, t);
