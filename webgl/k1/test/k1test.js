@@ -1355,6 +1355,79 @@ world(J());
       + (p3('footR').low * 1000).toFixed(0) + ' mm, joints '
       + (exact2() ? 'exact' : 'changed'));
 
+    /* A still scrubbed from 3.0 s into the later mark now eases through the
+       gap instead of snapping at each band edge. The endpoints stay exactly
+       the file pose and the owner's two triangles; only the in-betweens are
+       new. Playback still samples the file, so none of this can change the
+       gravity landing checked further down. */
+    const seekAt = (t) => { demo.seek('backflip', t); tick(1); return demo.measure(); };
+    const leanDeg = () => demo.lean() * 180 / Math.PI;
+    const minLow = (m) => Math.min(...m.map((p) => p.low));
+    const b0 = seekAt(3.0);
+    check('the scrub blend starts on the file pose at 3.0 s',
+      Math.abs(leanDeg() - 134) < 1 && demo.st.joints.leftArm > 75 &&
+      minLow(b0) > -0.001,
+      'lean ' + leanDeg().toFixed(1) + 'deg, leftArm '
+      + demo.st.joints.leftArm.toFixed(1) + ', lowest '
+      + (minLow(b0) * 1000).toFixed(1) + ' mm');
+    const bMid = seekAt(3.2);
+    check('a scrub eases from the file into the first dialled beat',
+      demo.st.joints.leftArm > 40 && demo.st.joints.leftArm < 75 &&
+      leanDeg() > 145 && leanDeg() < 175 && minLow(bMid) > -0.001,
+      'leftArm ' + demo.st.joints.leftArm.toFixed(1) + ', lean '
+      + leanDeg().toFixed(1) + 'deg, lowest '
+      + (minLow(bMid) * 1000).toFixed(1) + ' mm');
+    seekAt(3.35);
+    check('the blend arrives exactly on the first dialled triangle',
+      jointsExact() && Math.abs(leanDeg() - 177.6) < 1 &&
+      Math.abs(demo.act.rootT - 2.958) < 0.05 &&
+      minLow(demo.measure()) > -0.001,
+      'lean ' + leanDeg().toFixed(1) + 'deg, root file time '
+      + demo.act.rootT.toFixed(3) + 's');
+    const bGap = seekAt(3.61);
+    check('a scrub eases between the two dialled triangles',
+      demo.st.joints.leftShoulder > 105 && demo.st.joints.leftShoulder < 130 &&
+      demo.st.joints.leftAnkle > 134 && demo.st.joints.leftAnkle < 142 &&
+      leanDeg() > 183 && leanDeg() < 197 && minLow(bGap) > -0.001,
+      'leftShoulder ' + demo.st.joints.leftShoulder.toFixed(1)
+      + ', leftAnkle ' + demo.st.joints.leftAnkle.toFixed(1)
+      + ', lean ' + leanDeg().toFixed(1) + 'deg, lowest '
+      + (minLow(bGap) * 1000).toFixed(1) + ' mm');
+    /* No step at the three joins: 3.35/3.55 hold the first beat, 3.682
+       arrives on the second. Compare 10 ms samples either side. */
+    let worstLean = 0, worstJoint = 0, worstAt = 0;
+    for (const [a, b] of [[3.34, 3.36], [3.54, 3.56], [3.68, 3.683]]) {
+      let prev = null;
+      for (let t = a; t <= b + 1e-9; t += 0.01) {
+        seekAt(t);
+        const now = [leanDeg(), demo.st.joints.leftArm,
+          demo.st.joints.leftShoulder, demo.st.joints.leftAnkle];
+        if (prev) {
+          for (let i = 0; i < now.length; i++) {
+            const step = Math.abs(now[i] - prev[i]);
+            if (i === 0 && step > worstLean) { worstLean = step; worstAt = t; }
+            if (i > 0 && step > worstJoint) { worstJoint = step; worstAt = t; }
+          }
+        }
+        prev = now;
+      }
+    }
+    check('the scrub blend has no jump at the mark or band joins',
+      worstLean < 2 && worstJoint < 3,
+      'worst 10 ms step ' + worstLean.toFixed(2) + 'deg / '
+      + worstJoint.toFixed(2) + ' counts at ' + worstAt.toFixed(3) + 's');
+
+    /* The take itself is untouched: pressing play clears the scrub root and
+       samples the decoded file, even if the bar was last left mid-blend. */
+    demo.playAction('backflip');
+    demo.act.t = 3.2;
+    tick(1);
+    check('playing still samples the file through the blend window',
+      demo.act.scrubRoot === null && demo.st.joints.leftArm !== 33 &&
+      Math.abs(leanDeg() - 160.5) > 10,
+      'scrubRoot ' + demo.act.scrubRoot + ', leftArm '
+      + demo.st.joints.leftArm + ', lean ' + leanDeg().toFixed(1) + 'deg');
+
     /* The owner's actual record: its page clock says 3.461 s but its `model`
        block is the file's 2.958 s pose (the clock is approximate). Seeking the
        mark used to re-solve the root from 3.461 s and show 79deg, nowhere near
@@ -1838,6 +1911,7 @@ world(J());
     return sl ? +sl.value : NaN;
   });
   const exact = (demo) => Object.keys(dialled).every((k) => demo.st.target[k] === dialled[k]);
+  const leanDegHash = (demo) => demo.lean() * 180 / Math.PI;
 
   /* Fresh load with the mark's second already in the URL: the hash itself
      starts the demo, so no intro click is needed. */
@@ -1884,6 +1958,23 @@ world(J());
       + (demo.lean() * 180 / Math.PI).toFixed(1) + 'deg, head '
       + (g2('head').low * 1000).toFixed(0) + ' mm, foot '
       + (g2('footL').low * 1000).toFixed(0) + ' mm');
+
+    /* A link inside the window gets the eased still too, not a snap to either
+       mark. The stored clock is the one in the URL. */
+    vm.runInContext("location.hash = '#run/backflip/3.61'", opts.ctx);
+    for (const fn of opts.listeners['window:hashchange'] || []) fn({});
+    frames(opts, 2);
+    const mb = demo.measure(), gb = (n) => mb.find((p) => p.name === n);
+    check('a deep link inside the blend window shows the eased pose',
+      Math.abs(demo.act.t - 3.61) < 1e-9 && demo.act.playing === false &&
+      demo.st.joints.leftShoulder > 105 && demo.st.joints.leftShoulder < 130 &&
+      leanDegHash(demo) > 183 && leanDegHash(demo) < 197 &&
+      Math.min(...mb.map((p) => p.low)) > -0.001 &&
+      Math.abs(gb('head').low) < 0.02 &&
+      Math.min(gb('handL').low, gb('handR').low) > -0.001,
+      't=' + demo.act.t + ', lean ' + leanDegHash(demo).toFixed(1)
+      + 'deg, leftShoulder ' + demo.st.joints.leftShoulder.toFixed(1)
+      + ', lowest ' + (Math.min(...mb.map((p) => p.low)) * 1000).toFixed(1) + ' mm');
   }
 
   /* Same tab, hash changed after an ordinary boot. */

@@ -218,7 +218,7 @@
      `K1.actionPose` samples the keyframes. It writes target *and* joints, so
      the model follows the file's own frames instead of easing through them -
      the easing would round off exactly the sharp beats the file encodes. */
-  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null, headSeat: false };
+  const act = { key: null, name: null, data: null, t: 0, playing: false, panelT: 0, rootT: null, headSeat: false, scrubRoot: null };
 
   /* The manual recorder. The BLE protocol has no telemetry channel, so this
      page cannot learn what the real robot did by itself; a person watching the
@@ -235,7 +235,7 @@
      the last hand-made pose so it can be put back on screen, at the same second,
      and marked after the fact. Only joint edits fill it - a preset or a reset is
      the demo's own pose, not an observation of the robot. */
-  const hold = { pose: null, key: null, t: 0, rootT: null, headSeat: false };
+  const hold = { pose: null, key: null, t: 0, rootT: null, headSeat: false, scrubRoot: null };
 
   function actions() { return window.K1ACTIONS || {}; }
   function actionList() { return window.K1ACTION_LIST || Object.keys(actions()); }
@@ -249,6 +249,7 @@
     act.t = 0;
     act.rootT = null;
     act.headSeat = false;
+    act.scrubRoot = null;
     act.playing = true;
     rec.at = { key, t: 0 };
     st.scene = 'ACTION: ' + a.name.toUpperCase();
@@ -279,6 +280,7 @@
     act.playing = false;
     act.rootT = null;
     act.headSeat = false;
+    act.scrubRoot = null;
     act.data = null;
     act.key = null;
     act.name = null;
@@ -734,6 +736,7 @@
     hold.t = rec.at.t;
     hold.rootT = act.rootT;
     hold.headSeat = act.headSeat;
+    hold.scrubRoot = act.scrubRoot ? Object.assign({}, act.scrubRoot) : null;
     syncHold();
   }
 
@@ -752,6 +755,7 @@
     st.joints = p;
     act.rootT = hold.rootT;
     act.headSeat = hold.headSeat;
+    act.scrubRoot = hold.scrubRoot ? Object.assign({}, hold.scrubRoot) : null;
     st.scene = 'RECALLED POSE';
     /* The mark that should have been made then can still be made: the clock
        goes back to the second the pose was dialled against. */
@@ -886,7 +890,7 @@
     recRender();
     syncRecAt();
     syncMoveInfo();
-    applyMarkAt(key, rec.at.t);
+    applyMarkAt(key, rec.at.t, true);
     syncPanel();
     return rec.marks.length;
   }
@@ -922,7 +926,7 @@
      robot is found again. A flip's settle is on the same clock (FLIP_SETTLE),
      so the bar can reach the settled pose too, while the readout still counts
      only the file. Scrubbing a playing take keeps it playing. */
-  function seekAction(key, t) {
+  function seekAction(key, t, still) {
     const a = key ? actions()[key] : null;
     if (!a || !a.frames || !a.frames.length) return false;
     const lim = trackSpan(a);
@@ -932,11 +936,12 @@
     act.t = clamp(t, 0, lim);
     act.rootT = null;
     act.headSeat = false;
+    act.scrubRoot = null;
     rec.at = { key, t: act.t };
     const p = K1.actionPose(a, act.t);
     st.target = p;
     st.joints = p;
-    applyMarkAt(key, act.t);
+    applyMarkAt(key, act.t, still != null ? still : !wasPlaying);
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
     syncMoveInfo();
@@ -982,9 +987,139 @@
     }
     return null;
   }
-  function applyMarkAt(key, t) {
+  function smoothstep(u) { return u * u * (3 - 2 * u); }
+  function mix(a, b, u) { return a + (b - a) * u; }
+
+  /* A blend stop is either the file at the start of the scrub window or one of
+     the generated mark hints. Solve each endpoint once: the file keeps its
+     free flip track, while a mark levels the head and both palms for its own
+     dialled arms. The heavy solve is cached on the hint, not baked as a magic
+     number, so a regenerated action file cannot go stale against the rig. */
+  function poseFromHint(a, hint) {
+    const file = K1.actionPose(a, hint.t);
+    const p = {};
+    for (const j of JOINTS) {
+      const v = hint.pose[j.name];
+      p[j.name] = K1.clampRaw(j.name, v != null ? v : file[j.name]);
+    }
+    return p;
+  }
+
+  function rootForPose(t, pose, rootT, headSeat) {
+    const save = {
+      joints: st.joints, target: st.target, t: act.t,
+      rootT: act.rootT, headSeat: act.headSeat, scrubRoot: act.scrubRoot
+    };
+    st.joints = pose;
+    st.target = pose;
+    K1.pose(byName, sim.t, sim.phase, st);
+    act.t = t;
+    act.rootT = rootT;
+    act.headSeat = headSeat;
+    act.scrubRoot = null;
+    const root = support();
+    st.joints = save.joints;
+    st.target = save.target;
+    act.t = save.t;
+    act.rootT = save.rootT;
+    act.headSeat = save.headSeat;
+    act.scrubRoot = save.scrubRoot;
+    K1.pose(byName, sim.t, sim.phase, st);
+    return root;
+  }
+
+  function seekKey(a, hint) {
+    if (!hint) {
+      if (!a.__seekFileKey) {
+        const t = a.seekBlend.from;
+        const pose = K1.actionPose(a, t);
+        a.__seekFileKey = {
+          pose, rootT: t, headSeat: false, root: rootForPose(t, pose, t, false)
+        };
+      }
+      return a.__seekFileKey;
+    }
+    if (!hint.__seekKey) {
+      const pose = poseFromHint(a, hint);
+      const rootT = a.flip && hint.model ? modelTime(a, hint.model) : null;
+      const headSeat = !!(a.flip && hint.seat === 'head');
+      hint.__seekKey = {
+        pose, rootT, headSeat,
+        root: rootForPose(hint.t, pose, rootT, headSeat)
+      };
+    }
+    return hint.__seekKey;
+  }
+
+  /* Stills only: a scrubbed bar or a #run link eases from the file at 3.0 s
+     into the first dialled beat, holds it, then eases into the later mark.
+     Playback never calls this, so the take and its gravity landing are exact.
+     The root pitch/translation are blended explicitly: flipping the boolean
+     head-seat solve on halfway through would snap the body from the file's
+     ~134deg lean to its ~178deg/208deg triangle in one frame. Re-seating on
+     the lowest part at each blended pitch lets the hands arrive on the floor
+     with the head instead of passing through it. */
+  function applySeekBlend(key, t) {
+    const a = actions()[key];
+    const blend = a && a.seekBlend;
+    if (!blend || !act.data || act.data !== a ||
+        !blend.stops || !blend.stops.length) return false;
+    const raw = a.markPose;
+    const hints = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+    if (!hints.length) return false;
+    const keys = [seekKey(a, null)];
+    for (const stop of blend.stops) {
+      const hint = hints[stop.mark];
+      if (!hint) return false;
+      keys.push(Object.assign({}, seekKey(a, hint), { t: stop.t, hint }));
+    }
+    const end = keys[keys.length - 1];
+    if (t < blend.from - 1e-9 || t > end.t + 1e-9) return false;
+
+    let A = keys[0], B = end, u = 0;
+    if (t <= keys[1].t) {
+      B = keys[1];
+      u = (t - blend.from) / (B.t - blend.from);
+    } else {
+      for (let i = 1; i < keys.length - 1; i++) {
+        if (t <= keys[i + 1].t + 1e-9) {
+          A = keys[i]; B = keys[i + 1];
+          u = (t - A.t) / (B.t - A.t);
+          break;
+        }
+      }
+    }
+    u = clamp(u, 0, 1);
+    const e = smoothstep(u);
+    const pose = {};
+    for (const j of JOINTS) pose[j.name] = mix(A.pose[j.name], B.pose[j.name], e);
+    st.target = pose;
+    st.joints = pose;
+    K1.pose(byName, sim.t, sim.phase, st);
+    const root = {
+      pitch: mix(A.root.pitch, B.root.pitch, e),
+      tx: mix(A.root.tx, B.root.tx, e)
+    };
+    composeWorld(0, root.pitch, root.tx, 0);
+    /* `lowestFlipBody` excludes the palms by design for the free take. A
+       scrubbed blend is heading for a head-and-palms triangle, so include them
+       here: no hand may dip through the floor while the root eases over. */
+    let low = lowestFlipBody();
+    low = Math.min(low, soleLow('handL').y, soleLow('handR').y);
+    root.ty = -low;
+    act.scrubRoot = root;
+    act.rootT = mix(A.rootT, B.rootT, e);
+    /* At an endpoint this is exactly the mark's own root; in between the
+       explicit scrub root is the authority and the flag is parked. */
+    act.headSeat = (e <= 0 || e >= 1) && !!(A.headSeat || B.headSeat);
+    return true;
+  }
+
+  function applyMarkAt(key, t, still) {
+    if (!act.data) return false;
+    if (still !== false && applySeekBlend(key, t)) return true;
     const m = markedPoseAt(key, t);
-    if (!m || !act.data) return false;
+    if (!m) return false;
     const file = K1.actionPose(act.data, act.t);
     const p = {};
     for (const j of JOINTS) {
@@ -1003,7 +1138,7 @@
 
   function recSeek(m) {
     if (!m || !m.action) return false;
-    if (!seekAction(m.action, m.t)) return false;
+    if (!seekAction(m.action, m.t, true)) return false;
     act.playing = false;                // a still, not a take
     /* A mark that stored a pose was a hand-made observation: clicking it must
        put that pose back, or the very thing the note describes is thrown away
@@ -1418,6 +1553,11 @@
        sole: it is the free rigid-body track below, measured once from the same
        pose the file plays. */
     if (act.data && act.data.flip) {
+      if (act.scrubRoot) {
+        const r = act.scrubRoot;
+        composeWorld(0, r.pitch, r.tx, 0);
+        return { pitch: r.pitch, tx: r.tx, tz: 0, ty: r.ty };
+      }
       const rt = act.rootT != null ? act.rootT : act.t;
       const s = flipSample(flipTrack(act.data), rt);
       let pitch = s.pitch;
@@ -2417,10 +2557,13 @@
          works because the sampler clamps to the last sample. */
       const lim = trackSpan(act.data);
       act.t = clamp(at, 0, lim);
+      act.rootT = null;
+      act.headSeat = false;
+      act.scrubRoot = null;
       const p = K1.actionPose(act.data, act.t);
       st.target = p;
       st.joints = p;
-      applyMarkAt(act.key, act.t);
+      applyMarkAt(act.key, act.t, true);
       syncPanel();                        // the sliders must show the still too
       act.playing = false;                // a still, not a take
       /* A mark made while looking at a deep-linked still belongs to that

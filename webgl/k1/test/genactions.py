@@ -190,6 +190,25 @@ MARK_POSE_MOVES = {
     ],
 }
 
+
+# Scrubbing/deep-linking Back Flip from 3.0 s into the owner's later mark used
+# to snap: the file frame at 3.35 s was replaced outright by the first dialled
+# pose, and the gap before 3.682 s by the second. These stops are display hints
+# only - playback still samples the decoded file and lands under gravity. Each
+# stop names an entry in that move's markPose list, so the exact dialled joints
+# and solved triangle stay the authority at the held beats. The joints and root
+# between stops are interpolated in main.js; no servo byte is changed.
+SEEK_BLEND_MOVES = {
+    "backflip": {
+        "from": 3.0,
+        "stops": [
+            {"t": 3.35, "mark": 0},
+            {"t": 3.55, "mark": 0},
+            {"t": 3.682, "mark": 1},
+        ],
+    },
+}
+
 # Back Flip's arms are position-controlled print and are left out of the free
 # rigid-body solve. As the body rolls onto its back after the head-and-palms
 # triangle, the file's fixed arm angle drags the hands under the floor: at the
@@ -400,6 +419,8 @@ def build(k1: Path) -> tuple[dict, list[str]]:
                 entry["armClear"] = ARM_CLEAR_MOVES[key]
             if key in MARK_POSE_MOVES:
                 entry["markPose"] = MARK_POSE_MOVES[key]
+            if key in SEEK_BLEND_MOVES:
+                entry["seekBlend"] = SEEK_BLEND_MOVES[key]
             if "contact" in dec:
                 entry["contact"] = dec["contact"]
             if "repeat" in dec:
