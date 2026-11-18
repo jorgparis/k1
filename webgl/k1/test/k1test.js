@@ -1417,6 +1417,68 @@ world(J());
       'worst 10 ms step ' + worstLean.toFixed(2) + 'deg / '
       + worstJoint.toFixed(2) + ' counts at ' + worstAt.toFixed(3) + 's');
 
+    /* Past the later mark the decoded file crosses its left and right arm and
+       ankle values and unwinds to 74deg. A still must not inherit that mirror:
+       it rolls on from 208deg to a full turn, keeping each dialled pair on its
+       own side, and lands on the file's standing legs. */
+    const span = back.duration_ms / 1000 + demo.flip('backflip').settle;
+    const cont = seekAt(3.8);
+    check('a scrub at 3.80 keeps rolling instead of reverting to the file frame',
+      leanDeg() > 205 && leanDeg() < 215 &&
+      demo.st.joints.leftArm < 40 && demo.st.joints.rightArm > 210 &&
+      minLow(cont) > -0.001,
+      'lean ' + leanDeg().toFixed(1) + 'deg, arms '
+      + demo.st.joints.leftArm.toFixed(0) + '/'
+      + demo.st.joints.rightArm.toFixed(0));
+    let cLean = 0, cJoint = 0, cLow = 0;
+    let prevLean = null, prevJoints = null;
+    for (let t = 3.682; t <= span + 1e-9; t += 0.01) {
+      const m = seekAt(Math.min(t, span));
+      const nowLean = leanDeg();
+      const nowJoints = [demo.st.joints.leftArm, demo.st.joints.rightArm,
+        demo.st.joints.leftAnkle, demo.st.joints.rightAnkle];
+      if (prevLean) {
+        cLean = Math.max(cLean, Math.abs(nowLean - prevLean));
+        for (let i = 0; i < nowJoints.length; i++) {
+          cJoint = Math.max(cJoint, Math.abs(nowJoints[i] - prevJoints[i]));
+        }
+      }
+      cLow = Math.min(cLow, minLow(m));
+      prevLean = nowLean; prevJoints = nowJoints;
+    }
+    check('the continuation has no snap or sinking from 3.682 through the settle',
+      cLean < 2 && cJoint < 3 && cLow > -0.001,
+      'worst 10 ms step ' + cLean.toFixed(2) + 'deg / ' + cJoint.toFixed(2)
+      + ' counts, lowest ' + (cLow * 1000).toFixed(1) + ' mm');
+
+    const rolling = seekAt(4.5);
+    check('the rolling form keeps its handedness instead of mirroring',
+      demo.st.joints.leftArm < 40 && demo.st.joints.rightArm > 210 &&
+      demo.st.joints.leftAnkle > demo.st.joints.rightAnkle &&
+      minLow(rolling) > -0.001,
+      'arms ' + demo.st.joints.leftArm.toFixed(0) + '/'
+      + demo.st.joints.rightArm.toFixed(0) + ', ankles '
+      + demo.st.joints.leftAnkle.toFixed(0) + '/'
+      + demo.st.joints.rightAnkle.toFixed(0));
+    const land = seekAt(6.47);
+    check('the still lands on its feet at a full turn with corrected pairs',
+      Math.abs(leanDeg() - 360) < 1 &&
+      demo.st.joints.leftArm === 34 && demo.st.joints.rightArm === 223 &&
+      demo.st.joints.leftAnkle === 146 && demo.st.joints.rightAnkle === 106 &&
+      Math.abs(atPart(land, 'footL').low) < 0.01 &&
+      Math.abs(atPart(land, 'footR').low) < 0.01,
+      'lean ' + leanDeg().toFixed(1) + 'deg, feet '
+      + (atPart(land, 'footL').low * 1000).toFixed(0) + '/'
+      + (atPart(land, 'footR').low * 1000).toFixed(0) + ' mm');
+    const held = seekAt(span - 0.01);
+    check('the corrected landing is held through the settle',
+      Math.abs(leanDeg() - 360) < 1 && demo.st.joints.leftArm === 34 &&
+      demo.st.joints.rightArm === 223 &&
+      Math.abs(atPart(held, 'footL').low) < 0.01 &&
+      Math.abs(atPart(held, 'footR').low) < 0.01,
+      'at ' + (span - 0.01).toFixed(2) + 's lean ' + leanDeg().toFixed(1)
+      + 'deg, leftArm ' + demo.st.joints.leftArm);
+
     /* The take itself is untouched: pressing play clears the scrub root and
        samples the decoded file, even if the bar was last left mid-blend. */
     demo.playAction('backflip');
@@ -1427,6 +1489,18 @@ world(J());
       Math.abs(leanDeg() - 160.5) > 10,
       'scrubRoot ' + demo.act.scrubRoot + ', leftArm '
       + demo.st.joints.leftArm + ', lean ' + leanDeg().toFixed(1) + 'deg');
+    demo.act.t = 3.79;
+    tick(1);
+    const fileNow = K1.actionPose(back, demo.act.t);
+    check('playback at 3.79 still lands from the decoded file, not the scrub still',
+      demo.act.scrubRoot === null &&
+      demo.st.joints.leftArm === fileNow.leftArm &&
+      demo.st.joints.rightArm === fileNow.rightArm &&
+      Math.abs(leanDeg() - 74.4) < 2,
+      'scrubRoot ' + demo.act.scrubRoot + ', arms '
+      + demo.st.joints.leftArm + '/' + demo.st.joints.rightArm
+      + ' vs file ' + fileNow.leftArm + '/' + fileNow.rightArm
+      + ', lean ' + leanDeg().toFixed(1) + 'deg');
 
     /* The owner's actual record: its page clock says 3.461 s but its `model`
        block is the file's 2.958 s pose (the clock is approximate). Seeking the

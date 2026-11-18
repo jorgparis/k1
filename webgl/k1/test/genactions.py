@@ -206,6 +206,16 @@ SEEK_BLEND_MOVES = {
             {"t": 3.55, "mark": 0},
             {"t": 3.682, "mark": 1},
         ],
+        # Past the later mark the file swaps left and right arm (and ankle)
+        # values as it unwinds, which reads as a mirror of the dialled form.
+        # For stills, roll on from the mark's 208deg to a full turn and land on
+        # the file's standing legs with those two pairs put back on their own
+        # sides. Playback still uses the decoded file unchanged.
+        "after": {
+            "to": 6.47,
+            "pitch": 360,
+            "swap": ["Arm", "Ankle"],
+        },
     },
 }
 

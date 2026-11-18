@@ -942,6 +942,10 @@
     st.target = p;
     st.joints = p;
     applyMarkAt(key, act.t, still != null ? still : !wasPlaying);
+    /* A still seek may never get a frame before it is measured. Rebuild the
+       part rotations from the joints now, or a mark taken straight after a
+       seek would describe the previous pose's arms and head. */
+    K1.pose(byName, sim.t, sim.phase, st);
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
     syncMoveInfo();
@@ -1051,9 +1055,69 @@
     return hint.__seekKey;
   }
 
+  /* The file's last frame lands on its feet, but by then its left and right
+     arm (and ankle) values have crossed over: reading those joints raw would
+     mirror the dialled form as the still rolls on. Put those named pairs back
+     on the side the owner set, keep the file's standing legs and shoulders,
+     and finish a full turn from the mark's 208deg instead of unwinding to the
+     file's 74deg. Cached like the mark roots so seeking stays cheap. */
+  function seekLandingKey(a) {
+    if (!a.__seekLandingKey) {
+      const after = a.seekBlend.after;
+      const t = after.to;
+      const pose = K1.actionPose(a, t);
+      for (const pair of after.swap) {
+        const l = pose['left' + pair], r = pose['right' + pair];
+        pose['left' + pair] = r;
+        pose['right' + pair] = l;
+      }
+      const s = flipSample(flipTrack(a), t);
+      const pitch = after.pitch * Math.PI / 180;
+      const save = {
+        joints: st.joints, target: st.target, t: act.t,
+        rootT: act.rootT, headSeat: act.headSeat, scrubRoot: act.scrubRoot
+      };
+      /* Measuring the root needs a world matrix, but this is only a cache
+         solve: a seek outside the landing window must not inherit a world
+         composed for the landing. Save and restore the transforms as well as
+         the joint state. */
+      const saveRoot = Float32Array.from(rootM);
+      const saveWorld = parts.map((p) => Float32Array.from(p.world));
+      const saveRot = parts.map((p) => p.rot.slice());
+      st.joints = pose;
+      st.target = pose;
+      K1.pose(byName, sim.t, sim.phase, st);
+      act.t = t;
+      act.rootT = t;
+      act.headSeat = false;
+      act.scrubRoot = null;
+      composeWorld(0, pitch, s.px, 0);
+      let low = lowestFlipBody();
+      low = Math.min(low, soleLow('handL').y, soleLow('handR').y);
+      st.joints = save.joints;
+      st.target = save.target;
+      act.t = save.t;
+      act.rootT = save.rootT;
+      act.headSeat = save.headSeat;
+      act.scrubRoot = save.scrubRoot;
+      K1.pose(byName, sim.t, sim.phase, st);
+      rootM.set(saveRoot);
+      for (let i = 0; i < parts.length; i++) {
+        parts[i].world.set(saveWorld[i]);
+        for (let k = 0; k < 3; k++) parts[i].rot[k] = saveRot[i][k];
+      }
+      a.__seekLandingKey = {
+        pose, rootT: t, headSeat: false,
+        root: { pitch, tx: s.px, ty: -low }
+      };
+    }
+    return a.__seekLandingKey;
+  }
+
   /* Stills only: a scrubbed bar or a #run link eases from the file at 3.0 s
-     into the first dialled beat, holds it, then eases into the later mark.
-     Playback never calls this, so the take and its gravity landing are exact.
+     into the first dialled beat, holds it, then eases into the later mark and
+     on through a full turn to the standing landing. Playback never calls this,
+     so the take and its gravity landing are exact.
      The root pitch/translation are blended explicitly: flipping the boolean
      head-seat solve on halfway through would snap the body from the file's
      ~134deg lean to its ~178deg/208deg triangle in one frame. Re-seating on
@@ -1067,14 +1131,42 @@
     const raw = a.markPose;
     const hints = Array.isArray(raw) ? raw : (raw ? [raw] : []);
     if (!hints.length) return false;
+    /* Check the window before solving any endpoint. Solving a mark (or the
+       landing) temporarily composes the world to measure its root; doing that
+       for a seek before the blend leaves a still showing the solved picture
+       even though this seek must fall back to the file's own root. */
+    const endT = blend.after && a.flip
+      ? trackSpan(a)
+      : blend.stops[blend.stops.length - 1].t;
+    if (t < blend.from - 1e-9 || t > endT + 1e-9) return false;
+    /* Past the landing the corrected pose is held, so there is nothing to
+       ease between. Set the pose and the cached root directly and leave the
+       world matrix to the next animation frame: a seek has never composed one
+       here, and a recorded mark re-solves it before it measures anyway. */
+    if (blend.after && a.flip && t >= blend.after.to - 1e-9) {
+      const land = seekLandingKey(a);
+      st.target = land.pose;
+      st.joints = land.pose;
+      K1.pose(byName, sim.t, sim.phase, st);
+      act.scrubRoot = Object.assign({}, land.root);
+      act.rootT = land.rootT;
+      act.headSeat = false;
+      return true;
+    }
     const keys = [seekKey(a, null)];
     for (const stop of blend.stops) {
       const hint = hints[stop.mark];
       if (!hint) return false;
       keys.push(Object.assign({}, seekKey(a, hint), { t: stop.t, hint }));
     }
+    if (blend.after && a.flip) {
+      const land = seekLandingKey(a);
+      keys.push(Object.assign({}, land, { t: blend.after.to }));
+      /* The settle is on the same scrubber clock. Hold the corrected landing
+         through it rather than dropping back to the mirrored file frame. */
+      keys.push(Object.assign({}, land, { t: trackSpan(a) }));
+    }
     const end = keys[keys.length - 1];
-    if (t < blend.from - 1e-9 || t > end.t + 1e-9) return false;
 
     let A = keys[0], B = end, u = 0;
     if (t <= keys[1].t) {

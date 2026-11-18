@@ -2454,7 +2454,7 @@ window.K1ACTIONS = {
   "legGain": {"from": 0, "full": 1.852, "keys": [{"t": 0, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.19, "gains": {"thigh": -0.61, "calf": 1.39, "ankle": 0.79}}, {"t": 2.6, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 2.95, "gains": {"thigh": -0.18, "calf": 0.05, "ankle": 0.75}}, {"t": 3.25, "gains": {"thigh": 1, "calf": 1, "ankle": 1}}]},
   "armClear": {"keys": [{"t": 2.95, "v": 0}, {"t": 2.98, "v": -26}, {"t": 3.039, "v": -43}, {"t": 3.1, "v": -51}, {"t": 3.3, "v": -54}, {"t": 3.5, "v": -46}, {"t": 3.7, "v": -40}, {"t": 3.8, "v": -34}, {"t": 3.9, "v": -22}, {"t": 4.0, "v": 0}]},
   "markPose": [{"t": 3.461, "from": 3.35, "to": 3.55, "seat": "head", "pose": {"leftThigh": 229, "leftCalf": 10, "leftAnkle": 143, "rightThigh": 18, "rightCalf": 240, "rightAnkle": 109, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204, "head": 122}, "model": {"leftThigh": 116, "leftCalf": 65, "leftAnkle": 112, "rightThigh": 131, "rightCalf": 185, "rightAnkle": 140, "leftShoulder": 102, "rightShoulder": 146, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 59, "leftHand": 115, "rightArm": 198, "rightHand": 126, "head": 122}}, {"t": 3.682, "from": 3.6, "to": 3.78, "seat": "head", "pose": {"leftThigh": 229, "leftCalf": 10, "leftAnkle": 133, "rightThigh": 18, "rightCalf": 240, "rightAnkle": 118, "leftShoulder": 135, "rightShoulder": 110, "leftHip": 123, "leftFoot": 125, "rightHip": 129, "rightFoot": 115, "leftArm": 33, "leftHand": 37, "rightArm": 224, "rightHand": 204, "head": 122}, "model": {"leftThigh": 229, "leftCalf": 106, "leftAnkle": 108, "rightThigh": 18, "rightCalf": 143, "rightAnkle": 145, "leftShoulder": 103, "rightShoulder": 145, "leftHip": 123, "leftFoot": 123, "rightHip": 129, "rightFoot": 114, "leftArm": 95, "leftHand": 89, "rightArm": 163, "rightHand": 152, "head": 122}}],
-  "seekBlend": {"from": 3.0, "stops": [{"t": 3.35, "mark": 0}, {"t": 3.55, "mark": 0}, {"t": 3.682, "mark": 1}]},
+  "seekBlend": {"from": 3.0, "stops": [{"t": 3.35, "mark": 0}, {"t": 3.55, "mark": 0}, {"t": 3.682, "mark": 1}], "after": {"to": 6.47, "pitch": 360, "swap": ["Arm", "Ankle"]}},
   "file": "ProAction/back flip.sh",
   "frames": [
    {"t":1.078,"speed":40,"tag":"0b11","mag":{"leftThigh":0,"leftCalf":0,"leftAnkle":0,"rightThigh":0,"rightCalf":0,"rightAnkle":0,"leftShoulder":0,"rightShoulder":0,"leftHip":0,"leftFoot":0,"rightHip":0,"rightFoot":0,"leftArm":0,"leftHand":0,"rightArm":0,"rightHand":0,"head":0}},
@@ -6002,6 +6002,10 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     st.target = p;
     st.joints = p;
     applyMarkAt(key, act.t, still != null ? still : !wasPlaying);
+    /* A still seek may never get a frame before it is measured. Rebuild the
+       part rotations from the joints now, or a mark taken straight after a
+       seek would describe the previous pose's arms and head. */
+    K1.pose(byName, sim.t, sim.phase, st);
     st.scene = 'ACTION: ' + a.name.toUpperCase();
     syncPanel();
     syncMoveInfo();
@@ -6111,9 +6115,69 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     return hint.__seekKey;
   }
 
+  /* The file's last frame lands on its feet, but by then its left and right
+     arm (and ankle) values have crossed over: reading those joints raw would
+     mirror the dialled form as the still rolls on. Put those named pairs back
+     on the side the owner set, keep the file's standing legs and shoulders,
+     and finish a full turn from the mark's 208deg instead of unwinding to the
+     file's 74deg. Cached like the mark roots so seeking stays cheap. */
+  function seekLandingKey(a) {
+    if (!a.__seekLandingKey) {
+      const after = a.seekBlend.after;
+      const t = after.to;
+      const pose = K1.actionPose(a, t);
+      for (const pair of after.swap) {
+        const l = pose['left' + pair], r = pose['right' + pair];
+        pose['left' + pair] = r;
+        pose['right' + pair] = l;
+      }
+      const s = flipSample(flipTrack(a), t);
+      const pitch = after.pitch * Math.PI / 180;
+      const save = {
+        joints: st.joints, target: st.target, t: act.t,
+        rootT: act.rootT, headSeat: act.headSeat, scrubRoot: act.scrubRoot
+      };
+      /* Measuring the root needs a world matrix, but this is only a cache
+         solve: a seek outside the landing window must not inherit a world
+         composed for the landing. Save and restore the transforms as well as
+         the joint state. */
+      const saveRoot = Float32Array.from(rootM);
+      const saveWorld = parts.map((p) => Float32Array.from(p.world));
+      const saveRot = parts.map((p) => p.rot.slice());
+      st.joints = pose;
+      st.target = pose;
+      K1.pose(byName, sim.t, sim.phase, st);
+      act.t = t;
+      act.rootT = t;
+      act.headSeat = false;
+      act.scrubRoot = null;
+      composeWorld(0, pitch, s.px, 0);
+      let low = lowestFlipBody();
+      low = Math.min(low, soleLow('handL').y, soleLow('handR').y);
+      st.joints = save.joints;
+      st.target = save.target;
+      act.t = save.t;
+      act.rootT = save.rootT;
+      act.headSeat = save.headSeat;
+      act.scrubRoot = save.scrubRoot;
+      K1.pose(byName, sim.t, sim.phase, st);
+      rootM.set(saveRoot);
+      for (let i = 0; i < parts.length; i++) {
+        parts[i].world.set(saveWorld[i]);
+        for (let k = 0; k < 3; k++) parts[i].rot[k] = saveRot[i][k];
+      }
+      a.__seekLandingKey = {
+        pose, rootT: t, headSeat: false,
+        root: { pitch, tx: s.px, ty: -low }
+      };
+    }
+    return a.__seekLandingKey;
+  }
+
   /* Stills only: a scrubbed bar or a #run link eases from the file at 3.0 s
-     into the first dialled beat, holds it, then eases into the later mark.
-     Playback never calls this, so the take and its gravity landing are exact.
+     into the first dialled beat, holds it, then eases into the later mark and
+     on through a full turn to the standing landing. Playback never calls this,
+     so the take and its gravity landing are exact.
      The root pitch/translation are blended explicitly: flipping the boolean
      head-seat solve on halfway through would snap the body from the file's
      ~134deg lean to its ~178deg/208deg triangle in one frame. Re-seating on
@@ -6127,14 +6191,42 @@ window.K1ACTION_LIST = [ "chestup", "liftyourarms", "liftyourleftarm", "liftyour
     const raw = a.markPose;
     const hints = Array.isArray(raw) ? raw : (raw ? [raw] : []);
     if (!hints.length) return false;
+    /* Check the window before solving any endpoint. Solving a mark (or the
+       landing) temporarily composes the world to measure its root; doing that
+       for a seek before the blend leaves a still showing the solved picture
+       even though this seek must fall back to the file's own root. */
+    const endT = blend.after && a.flip
+      ? trackSpan(a)
+      : blend.stops[blend.stops.length - 1].t;
+    if (t < blend.from - 1e-9 || t > endT + 1e-9) return false;
+    /* Past the landing the corrected pose is held, so there is nothing to
+       ease between. Set the pose and the cached root directly and leave the
+       world matrix to the next animation frame: a seek has never composed one
+       here, and a recorded mark re-solves it before it measures anyway. */
+    if (blend.after && a.flip && t >= blend.after.to - 1e-9) {
+      const land = seekLandingKey(a);
+      st.target = land.pose;
+      st.joints = land.pose;
+      K1.pose(byName, sim.t, sim.phase, st);
+      act.scrubRoot = Object.assign({}, land.root);
+      act.rootT = land.rootT;
+      act.headSeat = false;
+      return true;
+    }
     const keys = [seekKey(a, null)];
     for (const stop of blend.stops) {
       const hint = hints[stop.mark];
       if (!hint) return false;
       keys.push(Object.assign({}, seekKey(a, hint), { t: stop.t, hint }));
     }
+    if (blend.after && a.flip) {
+      const land = seekLandingKey(a);
+      keys.push(Object.assign({}, land, { t: blend.after.to }));
+      /* The settle is on the same scrubber clock. Hold the corrected landing
+         through it rather than dropping back to the mirrored file frame. */
+      keys.push(Object.assign({}, land, { t: trackSpan(a) }));
+    }
     const end = keys[keys.length - 1];
-    if (t < blend.from - 1e-9 || t > end.t + 1e-9) return false;
 
     let A = keys[0], B = end, u = 0;
     if (t <= keys[1].t) {

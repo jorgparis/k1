@@ -209,13 +209,16 @@ for the head-planted beat (3.404 s and 3.461 s) and the 3.60–3.78 s band for t
 later beat where the feet come down (3.682 s). A scrubbed still or deep link
 eases smoothly from the file pose at 3.0 s into the first triangle, holds that
 exact dialled beat through its band, then eases into the second triangle and
-arrives on it exactly at 3.682 s. Every joint and both root pitch and height are
-interpolated; the root is seated on whichever of the body or the hands is
-lowest at each step, so a palm never passes through the floor on the way. The
-endpoints are still solved, not guessed, so a mark made there with no slider
-change records the dialled pose and contacts rather than the file frame at that
-second. Playing a take never uses this blend: it samples the decoded file and
-still lands on its feet.
+arrives on it exactly at 3.682 s. Past that beat the still keeps rolling from
+208° to a full turn, landing on the file's standing legs at 6.47 s and holding
+that pose through the settle; the file's final left/right arm and ankle values
+are put back on the sides the owner dialled, so the form does not mirror. Every
+joint and both root pitch and height are interpolated; the root is seated on
+whichever of the body or the hands is lowest at each step, so a palm never
+passes through the floor on the way. The endpoints are still solved, not
+guessed, so a mark made there with no slider change records the dialled pose
+and contacts rather than the file frame at that second. Playing a take never
+uses this blend: it samples the decoded file and still lands on its feet.
 A mark with no pose of its own is just the model's pose
 — it is not evidence that the robot agreed.
 
@@ -234,7 +237,7 @@ than editing the bundle.
 | `src/gl.js` | program / mesh / FBO / canvas-texture helpers |
 | `src/shaders.js` | sky, grid floor, planar shadow, scene, post |
 | `src/k1.js` | the `JOINTS` table, 19-part rig, neutral pose, clamping, pose, `.sh` direction + sampler |
-| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat, Back Flip's two head-and-palms `markPose` hints over the 3.35–3.55 s and 3.60–3.78 s page-clock bands and its `seekBlend` stops from 3.0 s into the later mark; `window.K1ACTIONS` + `K1ACTION_LIST` |
+| `src/actions.js` | **generated** by `test/genactions.py` from the phone menu and the card's `.sh` files; display hints include `flip`, the observed `tripod` beat, Back Flip's two head-and-palms `markPose` hints over the 3.35–3.55 s and 3.60–3.78 s page-clock bands and its `seekBlend` stops from 3.0 s into the later mark plus the `after` landing roll with its left/right pair swap; `window.K1ACTIONS` + `K1ACTION_LIST` |
 | `src/hud.js` | 320×200 1-bit HUD |
 | `src/music.js` | chiptune sequencer |
 | `src/main.js` | GL setup, render passes, camera, servo panel, presets, action player, recorder, input |
@@ -454,8 +457,12 @@ Four things the bytes do not carry, and where they are decided instead:
   the 208° pose at 3.682 s; from 3.0 s it does the same from the file pose to
   the first triangle. The hands are included in the seat while blending, so
   they catch the body before the head settles instead of cutting the floor.
-  This is for the scrubber and `#run/.../3.682` links only; a running take is
-  sampled straight from the file and keeps its gravity landing.
+  From 3.682 s the same still-only path rolls on to 360°, seating on the feet by
+  6.47 s and holding through the settle. The file's last frame crosses its arm
+  and ankle pairs (`223/34` arms, `106/146` ankles); the still swaps those two
+  pairs back (`34/223`, `146/106`) so the left/right form stays the one that was
+  dialled. This is for the scrubber and `#run/.../3.682` links only; a running
+  take is sampled straight from the file and keeps its gravity landing.
   That triangle is a root solve from the file's own pose, not an arm IK: the arm
   servos come straight from the script (as modified by the file's own clearance
   swing), and a dialled pose overrides them verbatim.
@@ -580,8 +587,9 @@ Two limits are worth stating plainly:
   `markPose` hints on Back Flip: scrubbing or deep-linking into their bands
   shows each mark's dialled joints and a level root, with the head and both
   palms on the floor together. The 3.0–3.682 s eased path joins those held
-  bands without a step; later times still show the file, and playing the take
-  ignores the blend and lands on the feet.
+  bands without a step, then rolls on to a full turn with the dialled handedness
+  instead of the file's mirrored last frame. Playing the take ignores the blend
+  and lands on the feet.
 * the leg remap is fitted from two hand-dialled marks, not from a sweep of the
   robot's travel. It makes Back Flip's wind-up and stretched-leg beat reach the
   poses the owner measured, but other magnitudes in the same stunt are inferred
